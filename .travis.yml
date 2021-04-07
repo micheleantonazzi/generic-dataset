@@ -13,7 +13,7 @@ deploy:
   on:
     tags: true
     branch: main
-  user: __token__
+  user: '__token__'
   password:
     secure: svaKKPOMKa4SUVtWh2qsvPnWaqK4EePpFBt6/VcWPwMuv/5cjapFk8I6DaazGZNlIb3W1xDk9WVkvFdW4IRdQ3BJenG6Fg5JWG4NnSWSTTBE/h8nq4s5YacDM13RzNa3igdBwbL+CYMwQDHYQtiRi70uytpm92270tRWNpBp1NWbCAWbLQR2Tgw7d8NNUcKfH79w28PMKJzB5Yc/LIyLrO0kDGquwdyrZgm8L+tejOhp2pyeenOzJHCUkCMkgyu9NJHZRv+EhSXiRrESqf0HAzydW8TmOa/YSGUfVYafa3CU+Mpw5I0ZsDn2UfrcqkWrCI0IjVPx29Btnzr9H695uddd5AuO1Njj+xSudShUYVcenehKIdmr2RZMWZsOEMqh4dIrhCWzagE2WYrpBwzn+hAAZsLvw5iu/CJaEffcmq/o3rS8igqJwzAPQ8gfom9ykwLZWDtKm7ZXZpKK4SfD8VO4xm+TLLPJ60MsYJVOVz2pX1sxq5uuSQvMEcHPn/eeSEgcLrdsfommB7VpruacRqA+rIHDglG+im3kunWGhKNuY6no4jJ3Uusxg0BfK+Er4H0uOHgmVvNc0OU5WrSd8Q5U5O9Zb1vY7D35s7OzpFADZYLHktZm9PmvClH1X7A6ZTI/E9c4mIoijV811M+I2a1I+nsgCfqlBMimvqWTKoo=
   distributions: 'sdist bdist_wheel'
