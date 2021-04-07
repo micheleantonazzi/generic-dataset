@@ -40,7 +40,7 @@ extras = {
 setup(
     name='gibson-dataset',
     version=__version__,
-    description="Ros Configurator",
+    description="Gibson dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/micheleantonazzi/gibson-dataset",
