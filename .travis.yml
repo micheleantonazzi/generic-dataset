@@ -1,0 +1,17 @@
+language: python
+python:
+  - '3.6'
+  - '3.7'
+  - '3.8'
+  - '3.9'
+install:
+  - pip3 install .
+script:
+  - pytest
+deploy:
+  provider: pypi
+  on:
+    tags: true
+    branch: master
+  user: '__token__'
+  password:
