@@ -50,9 +50,12 @@ def get_cuda_version():
 
     return ''
 
-cuda_version = get_cuda_version()
-if not cuda_version == '':
-    cuda_version = 'cupy-cuda' + cuda_version
+try:
+    cuda_version = get_cuda_version()
+    if not cuda_version == '':
+        cuda_version = 'cupy-cuda' + cuda_version
+except:
+    cuda_version = ''
 
 setup(
     name='gibson-dataset',
