@@ -1,5 +1,7 @@
 import os
 import re
+import subprocess
+
 # To use a consistent encoding
 from codecs import open as copen
 
@@ -37,6 +39,21 @@ extras = {
     'test': test_deps,
 }
 
+def get_cuda_version():
+
+    res = subprocess.check_output('nvcc --version'.split(' ')).decode()
+    if bool(res.rstrip()):
+        regex = r'release (\S+),'
+        match = re.search(regex, res)
+        if match:
+            return str(match.group(1)).replace('.', '')
+
+    return ''
+
+cuda_version = get_cuda_version()
+if not cuda_version == '':
+    cuda_version = 'cupy-cuda' + cuda_version
+
 setup(
     name='gibson-dataset',
     version=__version__,
@@ -58,6 +75,8 @@ setup(
     tests_require=test_deps,
     # Add here the package dependencies
     install_requires=[
+        'numpy',
+        cuda_version,
     ],
     entry_points={
         'console_scripts': [
