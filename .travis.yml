@@ -1,17 +1,18 @@
 language: python
 python:
-  - '3.6'
-  - '3.7'
-  - '3.8'
-  - '3.9'
+- '3.6'
+- '3.7'
+- '3.8'
+- '3.9'
 install:
-  - pip3 install .
+- pip3 install .
 script:
-  - pytest
+- pytest
 deploy:
   provider: pypi
   on:
     tags: true
     branch: master
-  user: '__token__'
+  user: __token__
   password:
+    secure: tcgaJkLkQf9yfYQYZdx+RpuUYGzR/MENNp4CZOhI+KsYAGk6ruk7Lw0BbCJiFGGQS06nt43neZXqhwG7+WptPBx7Ftz6jAJTNHVEfsB9r9gnCQ8rbMSSg8cbAAmXg5nyXhx3IPw81y7AbUfzHSxDkEZkUt5yfgv8/17wRoKuImYfrycymTEFioQBkG+yfoqKcrHOf3jqCwC2S7+Xx+SmaxNEqvQF2md0dycbvdwmtyb1OC2LIZNQI6jRS0Uyp4oTJGGv9Kz6QUmkdY7m0kpbv8vcHL2MbSrsnNhOxyy2L4j+MNHo79uLlIOY52ITF1e86nHrvgFVZdHCuUztHe84b9wpBU7Z8Kkf6bZ3nQcLmpQBJ0LmU6Y45hjMOCXdVXaptzumlfiTZbu1KATQcE7m9EWywNqRVBaFarbvFo3vBha9vuUeELmLYvGTabDDgBs/rLbTTTRFmeom2u7Ib+ucCZ4j/NX40HYSvLI4I4x5jUxPpd6Wf1GyPKDGnXRjSJ90zZDwvfqnMY9VKXJ3LZlopqXDtAb2ORbZtK+NXzt7/fxxGeDZ+i02nJCEQEcCClqUHSRbVCYZeFHlj9dWWVhSHCcJpJlvzljKDfRkc4TS3DgmOKPcQj8lE2vvVyh4h9OBaodUlDxNpxIQ5DtB6oL3KCdO/qCZ7ueyTxasA4VRLpA=
