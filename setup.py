@@ -38,7 +38,7 @@ extras = {
 }
 
 setup(
-    name='ros_configurator',
+    name='gibson-dataset',
     version=__version__,
     description="Ros Configurator",
     long_description=long_description,
