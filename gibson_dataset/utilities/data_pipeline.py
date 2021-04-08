@@ -10,7 +10,7 @@ class DataPipeline:
     A pipeline can be executed in CPU or GPU (using CuPy)
     """
 
-    def __init__(self, data: np.adrray, use_gpu: bool):
+    def __init__(self, data: np.array, use_gpu: bool):
         self._data = data
         self._use_gpu = use_gpu
         self._operations = queue.Queue()
