@@ -92,7 +92,7 @@ class DataPipeline:
         :return: the pipeline
         :rtype DataPipeline
         """
-        self._operations.put(lambda data: data[..., [2, 1, 0]])
+        self._operations.put(lambda data: data[:, :, [2, 1, 0]])
 
         return self
 
@@ -102,7 +102,7 @@ class DataPipeline:
         :return: the pipeline
         :rtype DataPipeline
         """
-        self._operations.put(lambda data: data[..., ::-1])
+        self._operations.put(lambda data: data[:, :, ::-1])
 
         return self
 
