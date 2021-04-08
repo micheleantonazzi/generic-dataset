@@ -1,4 +1,3 @@
-from __future__ import annotations
 import queue
 import numpy as np
 import gibson_dataset.utilities.engine_selector as eg
@@ -22,7 +21,7 @@ class DataPipeline:
         if use_gpu:
             self._transfer_data_to_device()
 
-    def _transfer_data_to_device(self) -> DataPipeline:
+    def _transfer_data_to_device(self) -> 'DataPipeline':
         """
         Adds to the pipeline's operations the data migration to GPU
         :return: return the pipeline
@@ -32,7 +31,7 @@ class DataPipeline:
 
         return self
 
-    def _get_data_from_device(self) -> DataPipeline:
+    def _get_data_from_device(self) -> 'DataPipeline':
         """
         Obtains the data from GPU
         :return: return the pipeline
@@ -56,7 +55,7 @@ class DataPipeline:
 
         return ret
 
-    def convert_bgr_to_rgb(self) -> DataPipeline:
+    def convert_bgr_to_rgb(self) -> 'DataPipeline':
         """
         Adds to the pipeline's operations the conversion from BGR to RGB
         :return: the pipeline
@@ -66,7 +65,7 @@ class DataPipeline:
 
         return self
 
-    def convert_rgb_to_bgr(self) -> DataPipeline:
+    def convert_rgb_to_bgr(self) -> 'DataPipeline':
         """
         Adds to the pipeline's operations the conversion from RGB to BGR
         :return: the pipeline
