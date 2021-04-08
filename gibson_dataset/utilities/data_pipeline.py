@@ -66,6 +66,7 @@ class DataPipeline:
 
         if self._use_gpu:
             self._cuda_stream.use()
+
         for operation in self._operations.queue:
             ret = operation(ret)
 
@@ -117,6 +118,19 @@ class DataPipeline:
         self._operations.put(lambda data: self._xp.around(data, decimals=decimals))
 
         return self
+
+    def scale_values_on_new_max(self, new_max: float) -> 'DataPipeline':
+        """
+        Scales all elements of an array to a new maximum value. The min value is zero.
+        Tipically used to produce a visualizable depth image from depth data
+        :param new_max:
+        :type new_max: float
+        :return:
+        """
+        self._operations.put(lambda data: data * (new_max / self._xp.nanmax(data)))
+
+        return self
+
 
     def add_operation(self, function: Callable[[Any], Any]) -> 'DataPipeline':
         """
