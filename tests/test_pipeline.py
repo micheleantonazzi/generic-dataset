@@ -17,3 +17,10 @@ def test_pipeline_rgb_to_bgr():
     converted = DataPipeline(data=image_rgb, use_gpu=False).convert_rgb_to_bgr().run().obtain_data()
 
     assert np.array_equal(converted, bgr_image)
+
+def test_pipeline_around():
+    array = np.array([1.111, 2.226])
+    rounded = np.around(array, 2)
+    converted = DataPipeline(data=array, use_gpu=False).around(2).run().obtain_data()
+
+    assert np.array_equal(rounded, converted)

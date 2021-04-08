@@ -105,3 +105,15 @@ class DataPipeline:
         self._operations.put(lambda data: data[..., ::-1])
 
         return self
+
+    def around(self, decimals: int = 0) -> 'DataPipeline':
+        """
+        Round an array of float to the given number of decimals
+        :param decimals: the number of decimal places to round
+        :type decimals: int
+        :return: the pipeline
+        :rtype DataPipeline
+        """
+        self._operations.put(lambda data: self._xp.around(data, decimals=decimals))
+
+        return self
