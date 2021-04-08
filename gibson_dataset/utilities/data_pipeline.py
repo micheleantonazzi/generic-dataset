@@ -73,7 +73,7 @@ class DataPipeline:
 
         return self
 
-    def obtain_data(self) -> np.array:
+    def get_data(self) -> np.array:
         """
         Returns the data after the pipeline execution finishes and call the end-function specified in the constructor.
         This a SYNC operation, so if the pipeline is running using GPU,
