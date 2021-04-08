@@ -24,3 +24,13 @@ def test_pipeline_around():
     converted = DataPipeline(data=array, use_gpu=True).around(2).run().obtain_data()
 
     assert np.array_equal(rounded, converted)
+
+def test_pipeline_add_operation():
+    array = np.array([11, 9, 11, 7, 5, 15])
+    array[array > 10] = 10
+    def f(data):
+        data[data > 10] = 10
+        return data
+    converted = DataPipeline(data=np.array([11, 9, 11, 7, 5, 15]), use_gpu=True).add_operation(f).run().obtain_data()
+
+    assert np.array_equal(array, converted)

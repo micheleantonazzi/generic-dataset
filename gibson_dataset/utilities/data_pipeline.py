@@ -1,5 +1,5 @@
 import queue
-from typing import Callable
+from typing import Callable, Any
 
 import numpy as np
 import gibson_dataset.utilities.engine_selector as eg
@@ -115,5 +115,17 @@ class DataPipeline:
         :rtype DataPipeline
         """
         self._operations.put(lambda data: self._xp.around(data, decimals=decimals))
+
+        return self
+
+    def add_operation(self, function: Callable[[Any], Any]) -> 'DataPipeline':
+        """
+        Adds to the pipeline operations queue a custom operation defined by the used. Typically used to add indexing operation: data[data > 10] = 1
+        :param function: a function that accpet a NumPy or a CuPy array and returns one of them
+        :type function: Callable[[Any], Any]
+        :return: the pipeline
+        :rtype DataPipeline
+        """
+        self._operations.put(function)
 
         return self
