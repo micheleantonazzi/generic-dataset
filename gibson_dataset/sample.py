@@ -146,12 +146,27 @@ class Sample:
 
     @synchronized_on_field(field_name='color_image', raise_expection=False)
     def get_pipeline_color_image(self) -> DataPipeline:
+        """
+        Returns the color_image's pipeline
+        :return: the pipeline
+        :rtype: DataPipeline
+        """
         return self._pipelines['color_image']
 
     @synchronized_on_field(field_name='depth_image', raise_expection=False)
     def get_pipeline_depth_image(self) -> DataPipeline:
+        """
+        Returns the depth_image's pipeline
+        :return: the pipeline
+        :rtype: DataPipeline
+        """
         return self._pipelines['depth_image']
 
     @synchronized_on_field(field_name='depth_data', raise_expection=False)
     def get_pipeline_depth_data(self) -> DataPipeline:
+        """
+        Returns the depth_data's pipeline
+        :return: the pipeline
+        :rtype: DataPipeline
+        """
         return self._pipelines['depth_data']
