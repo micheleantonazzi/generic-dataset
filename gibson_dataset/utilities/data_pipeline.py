@@ -13,7 +13,7 @@ class DataPipeline:
     :
     """
 
-    def __init__(self, data: np.array, use_gpu: bool, end_function: Callable[[np.array], np.array] = lambda data: data):
+    def __init__(self, data: np.ndarray, use_gpu: bool, end_function: Callable[[np.ndarray], np.ndarray] = lambda data: data):
         """
         Creates a new pipeline
         :param data: the data to be modified
@@ -57,7 +57,7 @@ class DataPipeline:
         Runs the pipeline returning the modified data.
         Note that if the pipeline uses GPU, this is an ASYNC operation.
         :return: the modified data
-        :rtype np.array
+        :rtype np.ndarray
         """
         if self._use_gpu:
             self._get_data_from_device()
@@ -74,13 +74,13 @@ class DataPipeline:
 
         return self
 
-    def get_data(self) -> np.array:
+    def get_data(self) -> np.ndarray:
         """
         Returns the data after the pipeline execution finishes and call the end-function specified in the constructor.
         This a SYNC operation, so if the pipeline is running using GPU,
         the current thread is blocked until all operations in the pipeline are completed.
-        :return: np.array
-        :rtype np.array
+        :return: np.ndarray
+        :rtype np.ndarray
         """
         if self._use_gpu:
             self._cuda_stream.synchronize()
