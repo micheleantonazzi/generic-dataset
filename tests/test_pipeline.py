@@ -2,10 +2,9 @@ import numpy as np
 import cv2
 import os
 
-
 from gibson_dataset.utilities.data_pipeline import DataPipeline
 
-def laod_depth_sample():
+def load_depth_sample():
     color_image = cv2.imread(os.path.dirname(os.path.abspath(__file__)) + '/positive_sample/positive_colorimage_0.png', cv2.IMREAD_COLOR)
     depth_image = cv2.imread(os.path.dirname(os.path.abspath(__file__)) + '/positive_sample/depth_image.png', cv2.IMREAD_GRAYSCALE)
     depth_data = np.load(os.path.dirname(os.path.abspath(__file__)) + '/positive_sample/depth_data.npy')
@@ -49,13 +48,3 @@ def test_pipeline_scale_values(use_gpu=False):
     converted = DataPipeline(data=array, use_gpu=use_gpu).scale_values_on_new_max(4).run().get_data()
 
     assert np.array_equal(final, converted)
-
-def test_pipeline_generate_depth_image(use_gpu=False):
-    _, depth_image, depth_data = laod_depth_sample()
-
-    def limit_range(data):
-        data[data > 10] = 10
-        return data
-    converted = DataPipeline(data=depth_data, use_gpu=use_gpu).add_operation(function=limit_range).scale_values_on_new_max(new_max=255)\
-        .add_operation(function=lambda data: data.astype('uint8')).run().get_data()
-    assert np.array_equal(depth_image, converted)
