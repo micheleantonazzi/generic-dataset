@@ -45,10 +45,11 @@ class Sample:
         :return: a new pipeline instance
         :rtype DataPipeline
         """
-        def assign(data: np.array) -> np.array:
-            self._color_image = data
-            self._pipelines['color_image'] = None
-            return data
+        def assign(data: np.ndarray) -> np.ndarray:
+            with self._locks['color_image']:
+                self._color_image = data
+                self._pipelines['color_image'] = None
+                return data
 
         self._pipelines['color_image'] = DataPipeline(data=self._color_image, use_gpu=use_gpu, end_function=assign)
         return self._pipelines['color_image']
@@ -63,10 +64,11 @@ class Sample:
         :return: a new pipeline instance
         :rtype DataPipeline
         """
-        def assign(data: np.array) -> np.array:
-            self._depth_data = data
-            self._pipelines['depth_data'] = None
-            return data
+        def assign(data: np.ndarray) -> np.ndarray:
+            with self._locks['depth_data']:
+                self._depth_data = data
+                self._pipelines['depth_data'] = None
+                return data
 
         self._pipelines['depth_data'] = DataPipeline(data=self._depth_data, use_gpu=use_gpu, end_function=assign)
         return self._pipelines['depth_data']
@@ -81,16 +83,17 @@ class Sample:
         :return: a new pipeline instance
         :rtype DataPipeline
         """
-        def assign(data: np.array) -> np.array:
-            self._depth_data = data
-            self._pipelines['depth_image'] = None
-            return data
+        def assign(data: np.ndarray) -> np.ndarray:
+            with self._locks['depth_image']:
+                self._depth_data = data
+                self._pipelines['depth_image'] = None
+                return data
 
         self._pipelines['depth_image'] = DataPipeline(data=self._depth_image, use_gpu=use_gpu, end_function=assign)
         return self._pipelines['depth_image']
 
     @synchronized_on_field(field_name='depth_image', raise_expection=True)
-    def create_pipeline_to_generate_depth_image(self, limit: float = 10, use_gpu: bool = False):
+    def create_pipeline_to_generate_depth_image(self, limit: float = 10, use_gpu: bool = False) -> DataPipeline:
         """
         Creates a pipeline to generate depth image starting from the depth data.
         The pipeline has all the necessary operations to create the depth image, you just need to run it and get the data.
@@ -102,10 +105,11 @@ class Sample:
         :return: the pipeline
         :rtype: DataPipeline
         """
-        def assign(data: np.array) -> np.array:
-            self._depth_image = data
-            self._pipelines['depth_image'] = None
-            return data
+        def assign(data: np.ndarray) -> np.ndarray:
+            with self._locks['depth_image']:
+                self._depth_image = data
+                self._pipelines['depth_image'] = None
+                return data
 
         def limit_range(data):
             data[data > limit] = limit
