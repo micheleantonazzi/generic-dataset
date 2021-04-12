@@ -11,5 +11,5 @@ but its functionalities are accelerated with CUDA.
 To use CuPy's features you must have a Nvidia GPU and the CUDA Toolkit correctly installed.
 
 **NB: you can configure gibson-dataset to work with NumPy or CuPy without any effort.
-If you don't a Nvidia device correctly configured, NumPy is used as default framework.**
+If you don't have a Nvidia device correctly configured, NumPy is used as default framework.**
 
