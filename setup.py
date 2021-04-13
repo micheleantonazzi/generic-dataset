@@ -70,7 +70,7 @@ setup(
     license='MIT',
     include_package_data=True,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Environment :: GPU :: NVIDIA CUDA',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3'
     ],
