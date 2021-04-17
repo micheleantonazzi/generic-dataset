@@ -2,7 +2,7 @@ import queue
 from typing import Callable, Any
 
 import numpy as np
-import gibson_dataset.utilities.engine_selector as eg
+import generic_dataset.utilities.engine_selector as eg
 
 
 class DataPipeline:

@@ -1,4 +1,4 @@
-from gibson_dataset.sample import Sample, AnotherActivePipelineException
+from generic_dataset.sample import Sample, AnotherActivePipelineException
 import pytest
 import tests.test_pipeline as tp
 import numpy as np

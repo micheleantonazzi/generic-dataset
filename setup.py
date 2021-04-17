@@ -28,7 +28,7 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 
-__version__ = find_version("gibson_dataset", "__version__.py")
+__version__ = find_version("generic_dataset", "__version__.py")
 
 test_deps =[
     "pytest",
@@ -58,12 +58,12 @@ except:
     cuda_version = ''
 
 setup(
-    name='gibson-dataset',
+    name='generic-dataset',
     version=__version__,
     description="Gibson dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/micheleantonazzi/gibson-dataset",
+    url="https://github.com/micheleantonazzi/generic-dataset",
     author="Michele Antonazzi",
     author_email="micheleantonazzi@gmail.com",
     # Choose your license

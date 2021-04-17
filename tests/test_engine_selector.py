@@ -1,4 +1,4 @@
-import gibson_dataset.utilities.engine_selector as eg
+import generic_dataset.utilities.engine_selector as eg
 import numpy as np
 
 

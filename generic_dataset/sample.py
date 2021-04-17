@@ -1,5 +1,5 @@
 import numpy as np
-from gibson_dataset.utilities.data_pipeline import DataPipeline
+from generic_dataset.utilities.data_pipeline import DataPipeline
 from typing import Dict, Union, TypeVar, Callable, Any
 from threading import Lock
 from functools import wraps

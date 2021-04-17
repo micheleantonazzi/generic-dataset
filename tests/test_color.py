@@ -1,4 +1,4 @@
-from gibson_dataset.utilities.color import Color
+from generic_dataset.utilities.color import Color
 
 
 def test_color_rgb():

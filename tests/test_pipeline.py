@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import os
 
-from gibson_dataset.utilities.data_pipeline import DataPipeline
+from generic_dataset.utilities.data_pipeline import DataPipeline
 
 def load_depth_sample():
     color_image = cv2.imread(os.path.dirname(os.path.abspath(__file__)) + '/positive_sample/positive_colorimage_0.png', cv2.IMREAD_COLOR)
