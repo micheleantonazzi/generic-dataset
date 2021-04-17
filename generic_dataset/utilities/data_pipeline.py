@@ -7,10 +7,9 @@ import generic_dataset.utilities.engine_selector as eg
 
 class DataPipeline:
     """
-    This class constructs an elaboration pipeline to elaborate a single data.
-    A pipeline is composed by a series of consecutive operations performed to the same data.
-    A pipeline can be executed in CPU or GPU (using CuPy)
-    :
+    This class constructs a pipeline to elaborate a numpy.ndarray.
+    A pipeline is composed by a series of consecutive operations performed iteratively to the same data.
+    A pipeline can be executed using the CPU or the GPU (using CuPy)
     """
 
     def __init__(self, data: np.ndarray, use_gpu: bool, end_function: Callable[[np.ndarray], np.ndarray] = lambda data: data):
