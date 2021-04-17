@@ -40,6 +40,6 @@ def get_engine(engine: Engine):
                           'To solve this issue follow these steps:\n'
                           ' - Install CUDA Toolkit and set the environment variables\n'
                           ' - Check if a GPU is available typing `nvidia-smi`\n'
-                          ' - Reinstall this package or install CuPy independently\n' + str(e), 'red'))
-            return numpy
+                          ' - Reinstall this package or install CuPy independently\n', 'red'))
+            raise e
 
