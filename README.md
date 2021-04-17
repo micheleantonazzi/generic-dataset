@@ -1,6 +1,16 @@
 # Generic dataset
+![](https://github.com/micheleantonazzi/generic-dataset/workflows/Build/badge.svg?branch=main)
 [![pypi](https://img.shields.io/pypi/v/generic-dataset.svg)](https://pypi.org/project/generic-dataset/)
-![](https://travis-ci.com/micheleantonazzi/gibson-dataset.svg?branch=main)
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=coverage)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+
+
+
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=alert_status)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=sqale_rating)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=reliability_rating)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=security_rating)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+[![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=vulnerabilities)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
+
 
 This python library is a tool to acquire and organize data using Gibson as simulation environment.
 
