@@ -102,8 +102,10 @@ class SampleGenerator:
     def _create_constructor(self):
         def __init__(sample):
             sample._fields_name: Set[str] = self._fields_name.copy()
+            sample._fields_type: Dict[str, type] = self._fields_type.copy()
             sample._fields_value: Dict[str, Any] = {field_name: None for field_name in sample._fields_name}
-            sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name}
+            # The fields with a pipeline must be numpy.ndarray
+            sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
             sample._locks: Dict[str, Lock] = {field_name: Lock() for field_name in sample._fields_name}
 
         return __init__
@@ -112,22 +114,27 @@ class SampleGenerator:
         field_type: type = self._fields_type[field_name]
         class_name = self._name
 
-        # If field is a numpy.ndarray, the setter method must be synchronized with the corresponding lock, to ensure that its pipeline is correctly reset
-        if field_type == np.ndarray:
-            @synchronized_on_field(field_name=field_name, check_pipeline=False)
-            def f(sample, value: field_type) -> class_name:
-                """
-                Sets "{0}" parameter. If there is an active pipeline for this field, it is terminated (this operation can take a while).
-                :param value: the value to be assigned to {1}
-                :type value: {2}
-                :return: None
-                """.format(field_name, field_name, field_type)
-                pipeline = sample._pipelines[field_name]
-                if pipeline is not None:
-                    pipeline.run().get_data()
-                    sample._pipelines[field_name] = None
-                sample._fields_value[field_name] = value
 
-                return sample
+        @synchronized_on_field(field_name=field_name, check_pipeline=False)
+        def f(sample, value: field_type) -> class_name:
+            """
+            Sets "{0}" parameter.
+            If the field is an numpy.ndarray and it has an active pipeline, the pipeline is terminated (this operation can take a while).
+            :param value: the value to be assigned to {1}
+            :type value: {2}
+            :return: None
+            """
+            pipeline = sample._pipelines[field_name]
+            if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
+                pipeline.run().get_data()
+                sample._pipelines[field_name] = None
+            sample._fields_value[field_name] = value
+
+            return sample
+
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__module__ + '.' + field_type.__name__)
 
         return f
+
+    def _create_getter(self, field_name: str):
+        pass
