@@ -90,10 +90,13 @@ class SampleGenerator:
             def __new__(cls, name, bases, class_dict):
                 class_dict['__init__'] = self._create_constructor()
 
-                # Add setters
+                # Add setters, getters, pipeline method
                 for field in self._fields_name:
                     class_dict['set_' + field] = self._create_setter(field_name=field)
                     class_dict['get_' + field] = self._create_getter(field_name=field)
+                    # Add pipeline methods only if field is a numpy.ndarray
+                    if self._fields_type[field] == np.ndarray:
+                        class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(field_name=field)
                 return type.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(Sample, metaclass=MetaSample):
@@ -149,4 +152,29 @@ class SampleGenerator:
 
         f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__)
 
+        return f
+
+    def _create_add_pipeline_method(self, field_name: str):
+
+        @synchronized_on_field(field_name=field_name, check_pipeline=True)
+        def f(sample, use_gpu: bool = False) -> DataPipeline:
+            """
+            Create and return a new pipeline to elaborate {0}.
+            If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
+            :raises AnotherActivePipelineException: if another pipeline is active
+            :param use_gpu: if this param is true, the pipeline is executed in GPU
+            :type use_gpu: bool
+            :return: a new pipeline instance for {1}
+            :rtype DataPipeline
+            """
+            def assign(data: np.ndarray) -> np.ndarray:
+                with sample._locks[field_name]:
+                    sample._fields_value[field_name] = data
+                    sample._pipelines[field_name] = None
+                    return data
+
+            sample._pipelines[field_name] = DataPipeline(data=sample._fields_value[field_name], use_gpu=use_gpu, end_function=assign)
+            return sample._pipelines[field_name]
+
+        f.__doc__ = f.__doc__.format(field_name, field_name)
         return f
