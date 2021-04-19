@@ -115,25 +115,21 @@ class SampleGenerator:
         field_type: type = self._fields_type[field_name]
         class_name = self._name
 
-
-        @synchronized_on_field(field_name=field_name, check_pipeline=False)
+        @synchronized_on_field(field_name=field_name, check_pipeline=True)
         def f(sample, value: field_type) -> class_name:
             """
             Sets "{0}" parameter.
-            If the field is an numpy.ndarray and it has an active pipeline, the pipeline is terminated (this operation can take a while).
+            If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
+            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before setting a new value
             :param value: the value to be assigned to {1}
             :type value: {2}
-            :return: None
+            :return: the {3} object
+            :rtype: {4}
             """
-            pipeline = sample._pipelines[field_name]
-            if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
-                pipeline.run().get_data()
-                sample._pipelines[field_name] = None
             sample._fields_value[field_name] = value
-
             return sample
 
-        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__module__ + '.' + field_type.__name__)
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
 
         return f
 
