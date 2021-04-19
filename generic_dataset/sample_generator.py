@@ -39,7 +39,7 @@ def synchronized_on_field(field_name: str, check_pipeline: bool) -> Callable[[TC
         def sync_method(sample, *args, **kwargs):
             lock = sample._locks[field_name]
             with lock:
-                if check_pipeline and sample._pipelines[field_name] is not None:
+                if check_pipeline and field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
                     raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
                 return method(sample, *args, **kwargs)
         return sync_method
