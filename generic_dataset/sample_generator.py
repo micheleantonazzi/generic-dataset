@@ -93,6 +93,7 @@ class SampleGenerator:
                 # Add setters
                 for field in self._fields_name:
                     class_dict['set_' + field] = self._create_setter(field_name=field)
+                    class_dict['get_' + field] = self._create_getter(field_name=field)
                 return type.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(Sample, metaclass=MetaSample):
@@ -137,4 +138,19 @@ class SampleGenerator:
         return f
 
     def _create_getter(self, field_name: str):
-        pass
+        field_type: type = self._fields_type[field_name]
+
+        @synchronized_on_field(field_name=field_name, check_pipeline=True)
+        def f(sample) -> field_type:
+            """
+            Return "{0}" value.
+            If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
+            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before setting a new value
+            :return: the value of {1}
+            :rtype: {2}
+            """
+            return sample._fields_value[field_name]
+
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__)
+
+        return f
