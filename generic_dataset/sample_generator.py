@@ -1,4 +1,11 @@
-from typing import Dict, Any, Union, Type
+from functools import wraps
+from typing import Dict, Any, Union, Type, Set, TypeVar, Callable
+import numpy as np
+from threading import Lock
+
+from generic_dataset.utilities.data_pipeline import DataPipeline
+
+TCallable = TypeVar('TCallable', bound=Callable[..., Any])
 
 class Sample:
     pass
@@ -10,12 +17,41 @@ class FieldNameAlreadyExistsException(Exception):
     def __init__(self, field_name: str):
         super(FieldNameAlreadyExistsException, self).__init__('A field called "{0}" already exists and cannot be added.'.format(field_name))
 
+class AnotherActivePipelineException(Exception):
+    """
+    This exception is raised when an active pipeline already exists for a field
+    """
+    def __init__(self, field_name: str):
+        super(AnotherActivePipelineException, self).__init__('A Pipeline for the field "{0}" already exists, terminate it before using this method'.format(field_name))
+
+def synchronized_on_field(field_name: str, check_pipeline: bool) -> Callable[[TCallable], TCallable]:
+    """
+    This decorator synchronizes class methods with the field they use.
+    All methods that use the same field are synchronized with respect to the same lock.
+    In Addition, it can check also the field's pipeline and eventually raises an exception if there exists an active one.
+    :raises AnotherActivePipelineException: if check_pipeline parameter is True and there is an active pipeline for the given field
+    :param field_name: the name of the field
+    :param check_pipeline: if True, the field's pipeline is checked and an exception is raised is there is an active pipeline.
+    :return: Callable
+    """
+    def decorator(method: TCallable) -> TCallable:
+        @wraps(method)
+        def sync_method(sample, *args, **kwargs):
+            lock = sample._locks[field_name]
+            with lock:
+                if check_pipeline and sample._pipelines[field_name] is not None:
+                    raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
+                return method(sample, *args, **kwargs)
+        return sync_method
+    return decorator
+
 class SampleGenerator:
     """
     This object generates sample class according to the needs of the programmer.
     """
     def __init__(self, name: str):
         self._name = name
+        self._fields_name: Set[str] = set()
         self._fields_type: Dict[str, type] = {}
         self._fields_dataset: Dict[str, bool] = {}
 
@@ -36,9 +72,10 @@ class SampleGenerator:
         :rtype: SampleGenerator
         """
 
-        if field_name in self._fields_type.keys():
+        if field_name in self._fields_name:
             raise FieldNameAlreadyExistsException(field_name=field_name)
 
+        self._fields_name.add(field_name)
         self._fields_type[field_name] = field_type
         self._fields_dataset[field_name] = add_to_dataset
 
@@ -52,7 +89,11 @@ class SampleGenerator:
         class MetaSample(type):
             def __new__(cls, name, bases, class_dict):
                 class_dict['__init__'] = self._create_constructor()
-                return type.__new__(cls, name, bases, class_dict)
+
+                # Add setters
+                for field in self._fields_name:
+                    class_dict['set_' + field] = self._create_setter(field_name=field)
+                return type.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(Sample, metaclass=MetaSample):
             pass
@@ -60,6 +101,33 @@ class SampleGenerator:
 
     def _create_constructor(self):
         def __init__(sample):
-            sample._fields: Dict[str, Any] = {field_name: None for field_name in self._fields_type.keys()}
+            sample._fields_name: Set[str] = self._fields_name.copy()
+            sample._fields_value: Dict[str, Any] = {field_name: None for field_name in sample._fields_name}
+            sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name}
+            sample._locks: Dict[str, Lock] = {field_name: Lock() for field_name in sample._fields_name}
 
         return __init__
+
+    def _create_setter(self, field_name: str):
+        field_type: type = self._fields_type[field_name]
+        class_name = self._name
+
+        # If field is a numpy.ndarray, the setter method must be synchronized with the corresponding lock, to ensure that its pipeline is correctly reset
+        if field_type == np.ndarray:
+            @synchronized_on_field(field_name=field_name, check_pipeline=False)
+            def f(sample, value: field_type) -> class_name:
+                """
+                Sets "{0}" parameter. If there is an active pipeline for this field, it is terminated (this operation can take a while).
+                :param value: the value to be assigned to {1}
+                :type value: {2}
+                :return: None
+                """.format(field_name, field_name, field_type)
+                pipeline = sample._pipelines[field_name]
+                if pipeline is not None:
+                    pipeline.run().get_data()
+                    sample._pipelines[field_name] = None
+                sample._fields_value[field_name] = value
+
+                return sample
+
+        return f
