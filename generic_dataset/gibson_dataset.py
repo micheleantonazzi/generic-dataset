@@ -1,4 +1,4 @@
-from generic_dataset.sample_generator import SampleGenerator
+from generic_dataset.sample_generator import SampleGenerator, AnotherActivePipelineException
 import numpy as np
 
 GibsonSample = SampleGenerator(name='GibsonSample')\
