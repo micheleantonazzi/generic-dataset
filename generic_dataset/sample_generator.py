@@ -141,7 +141,7 @@ class SampleGenerator:
             """
             Return "{0}" value.
             If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
-            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before setting a new value
+            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before getting a new value
             :return: the value of {1}
             :rtype: {2}
             """
