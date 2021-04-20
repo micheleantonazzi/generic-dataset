@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Dict, Any, Union, Type, Set, TypeVar, Callable
+from typing import Dict, Any, Union, Type, Set, TypeVar, Callable, List
 import numpy as np
 from threading import Lock
 
@@ -7,8 +7,10 @@ from generic_dataset.utilities.data_pipeline import DataPipeline
 
 TCallable = TypeVar('TCallable', bound=Callable[..., Any])
 
+
 class Sample:
     pass
+
 
 class FieldNameAlreadyExistsException(Exception):
     """
@@ -17,6 +19,15 @@ class FieldNameAlreadyExistsException(Exception):
     def __init__(self, field_name: str):
         super(FieldNameAlreadyExistsException, self).__init__('A field called "{0}" already exists and cannot be added.'.format(field_name))
 
+
+class FieldDoesNotExistsException(Exception):
+    """
+    This exception is raised when an action refers to a non-existent field
+    """
+    def __init__(self, field_name: str):
+        super(FieldDoesNotExistsException, self).__init__('You cannot use {0} field: it does not exist!!'.format(field_name))
+
+
 class AnotherActivePipelineException(Exception):
     """
     This exception is raised when an active pipeline already exists for a field
@@ -24,36 +35,73 @@ class AnotherActivePipelineException(Exception):
     def __init__(self, field_name: str):
         super(AnotherActivePipelineException, self).__init__('A Pipeline for the field "{0}" already exists, terminate it before using this method'.format(field_name))
 
-def synchronized_on_field(field_name: str, check_pipeline: bool) -> Callable[[TCallable], TCallable]:
+
+class FieldHasIncorrectTypeException(Exception):
     """
-    This decorator synchronizes class methods with the field they use.
+    This exception is raised when an action is performed on a field which has an incompatible type
+    """
+    def __init__(self, field_name: str):
+        super(FieldHasIncorrectTypeException, self).__init__('There is a type issue: the {0} field has an incompatible type!'.format(field_name))
+
+
+class MethodAlreadyExistsException(Exception):
+    """
+    This exception is raised when a method to add already exists
+    """
+    def __init__(self, method_name):
+        super(MethodAlreadyExistsException, self).__init__('A method called {0} already exists: you cannot add a new one!!'.format(method_name))
+
+
+def synchronized_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
+    """
+    This decorator synchronizes class methods with the fields they use.
     All methods that use the same field are synchronized with respect to the same lock.
     In Addition, it can check also the field's pipeline and eventually raises an exception if there exists an active one.
     :raises AnotherActivePipelineException: if check_pipeline parameter is True and there is an active pipeline for the given field
-    :param field_name: the name of the field
+    :param fields_name: the Set containing the fields name ot synchronize
     :param check_pipeline: if True, the field's pipeline is checked and an exception is raised is there is an active pipeline.
     :return: Callable
     """
     def decorator(method: TCallable) -> TCallable:
         @wraps(method)
         def sync_method(sample, *args, **kwargs):
-            lock = sample._locks[field_name]
-            with lock:
-                if check_pipeline and field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
-                    raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
-                return method(sample, *args, **kwargs)
+            locks = [sample._locks[field_name] for field_name in fields_name]
+            [lock.acquire() for lock in locks]
+            if check_pipeline:
+                for field_name in fields_name:
+                    if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
+                        [lock.release() for lock in locks]
+                        raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
+
+            method_result = method(sample, *args, **kwargs)
+            [lock.release() for lock in locks]
+            return method_result
         return sync_method
     return decorator
 
+
 class SampleGenerator:
     """
-    This object generates sample class according to the needs of the programmer.
+    This object generates customized Sample class according to the needs of the programmer.
+    Using a sample generator it is possible to adds fields to the final Sample class.
+    For each field, it is possible to specify its name, its type and if it is a dataset member
+    (in this case, it is mandatory to specify a method to save and load this field from disk).
+    SampleGenerator automatically creates the following default method for each field:
+    - get_{field_name}: getter
+    - set_{field_name}: setter
+    - create_pipeline_for_{field_name}: return a DataPipeline to elaborate the correspondent field
+    In addition, other methods can be created and associated to a precise property.
+    For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
+    specified by the programmer.
+    The final generated sample class is thread safe, in the sense that every methods associated to the same field are synchronized.
+    This means that two different threads cannot simultaneously execute two methods associated with the same field.
     """
     def __init__(self, name: str):
         self._name = name
         self._fields_name: Set[str] = set()
         self._fields_type: Dict[str, type] = {}
         self._fields_dataset: Dict[str, bool] = {}
+        self._custom_methods: Dict[str, Dict[str, Callable]] = {}
 
     def add_field(self, field_name: str, field_type: type, add_to_dataset: bool = True) -> 'SampleGenerator':
         """
@@ -80,6 +128,22 @@ class SampleGenerator:
         self._fields_dataset[field_name] = add_to_dataset
 
         return self
+
+    def add_custom_pipeline(self, method_name: str, elaborated_field: str, final_field: str, pipeline: DataPipeline) -> 'SampleGenerator':
+        """
+        Creates a method which returns a predefined pipeline to elaborate a precise field. The pipeline results can be assigned to final_field
+        This is useful to create once a pipeline frequently used.
+        :raise FieldDoesNotExistsException: if the specified fields do not exists (elaborated and final fields)
+        :raise FieldHasIncorrectType: if the field is not a numpy.ndarray (a pipeline can be executed only using a numpy.ndarray)
+        :raise MethodAlreadyExists: if the method_name already exists
+        :param method_name: the name of the method
+        :type method_name: str
+        :param field_name: the field to associate the pipeline
+        :type field_name: str
+        :param pipeline:
+        :return: SampleGenerator
+        """
+        pass
 
     def generate_sample_class(self) -> 'GeneratedSampleClass':
         """
@@ -118,7 +182,7 @@ class SampleGenerator:
         field_type: type = self._fields_type[field_name]
         class_name = self._name
 
-        @synchronized_on_field(field_name=field_name, check_pipeline=True)
+        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
         def f(sample, value: field_type) -> class_name:
             """
             Sets "{0}" parameter.
@@ -139,7 +203,7 @@ class SampleGenerator:
     def _create_getter(self, field_name: str):
         field_type: type = self._fields_type[field_name]
 
-        @synchronized_on_field(field_name=field_name, check_pipeline=True)
+        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
         def f(sample) -> field_type:
             """
             Return "{0}" value.
@@ -156,10 +220,10 @@ class SampleGenerator:
 
     def _create_add_pipeline_method(self, field_name: str):
 
-        @synchronized_on_field(field_name=field_name, check_pipeline=True)
+        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
         def f(sample, use_gpu: bool = False) -> DataPipeline:
             """
-            Create and return a new pipeline to elaborate {0}.
+            Create and return a new pipeline to elaborate {0}. The given pipeline sets the data to the sample object when get_data() is called
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
             :raises AnotherActivePipelineException: if another pipeline is active
             :param use_gpu: if this param is true, the pipeline is executed in GPU
