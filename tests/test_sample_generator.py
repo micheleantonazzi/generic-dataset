@@ -55,7 +55,7 @@ def test_pipeline_methods():
     generated.create_pipeline_for_field()
 
 
-def test_custome_pipeline(use_gpu: bool = False):
+def test_custom_pipeline(use_gpu: bool = False):
     with pytest.raises(FieldDoesNotExistException):
         SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray)\
             .add_custom_pipeline('m', elaborated_field='f', final_field='field2', pipeline=DataPipeline())

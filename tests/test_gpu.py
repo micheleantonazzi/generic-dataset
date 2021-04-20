@@ -1,5 +1,5 @@
 import tests.test_pipeline as tp
-import tests.test_gibson_dataset as tg
+import tests.test_generated_sample as tg
 
 def test_all_with_gpu():
     tp.test_pipeline_bgr_to_rgb()
