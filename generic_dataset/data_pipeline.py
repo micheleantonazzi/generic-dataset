@@ -1,0 +1,161 @@
+import queue
+from typing import Callable, Any
+
+import numpy as np
+import generic_dataset.utilities.engine_selector as eg
+
+
+class PipelineAlreadyRunException(Exception):
+    """
+    This exception is raised when the user tries to change the status of a run pipeline or the pipeline is re-run.
+    """
+    def __init__(self):
+        super(PipelineAlreadyRunException, self).__init__('The pipeline can not be modified or re-run if it has already been executed!')
+
+
+class PipelineConfigurationException(Exception):
+    """
+    This exception is raised when a pipeline isn't correctly configured when it is run
+    """
+    def __init__(self):
+        super(PipelineConfigurationException, self).__init__('The pipeline must be correctly configured before before is being executed')
+
+
+class PipelineNotExecutedException(Exception):
+    """
+    This exception is raised when the pipeline has not yet been executed.
+    """
+    def __init__(self):
+        super(PipelineNotExecutedException, self).__init__('The pipeline has not yet been executed, run it before call this method!')
+
+
+class DataPipeline:
+    """
+    This class constructs a pipeline to elaborate a numpy.ndarray.
+    A pipeline can be executed using the CPU or the GPU (using CuPy). This can be specified in the run method
+    A pipeline is composed by a series of consecutive operations performed iteratively to the same data.
+    Before running a pipeline, a pipeline must be correctly configure it using the following methods:
+    - set_data(): this method sets the data to elaborate
+    - set_end_function(): this method sets the end-function, which can be defined by the programmer.
+    - add_operation(): this method adds an operation to the pipeline.
+    This configuration must be performed before calling run() method, otherwise an exception is raised.
+    A pipeline cannot be re-run (so don't call run() twice)
+    A series of operation can be set for each pipeline: they are iteratively executed using the initial data when run() method is called.
+    The programmer can add an operation using add_operation() method.
+    """
+
+    def __init__(self):
+        """
+        Initializes a new pipeline.
+        """
+        self._data = None
+        self._use_gpu = False
+        self._end_function = None
+        self._operations = queue.Queue()
+        self._is_run = False
+        self._cuda_stream = None
+
+    def set_data(self, data: np.ndarray) -> 'DataPipeline':
+        """
+        Sets the data to elaborate. This method can be executed before calling of run() function.
+        :raise PipelineAlreadyRunException: if the pipeline has been already run you cannot change the data during the execution
+        :param data: the data to elaborate
+        :type data: numpy.ndarray
+        :return: DataPipeline instance
+        :rtype: DataPipeline
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+
+        self._data = data
+        return self
+
+    def set_end_function(self, f: Callable) -> 'DataPipeline':
+        """
+        Sets the end-function.
+        The end-function is executed when the pipeline is terminated, after the run() method when the get_data() is called.
+        The end-function signature must be f(data) -> data, where "data" is the data which have been processed.
+        In this function, the programmer can inserts code to execute at the end of the pipeline execution.
+        :raise PipelineAlreadyRunException: if the pipeline has been already run you cannot change the end-function during the pipeline execution)
+        :param f: the end-function
+        :return: the pipeline
+        :rtype: DataPipeline
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+        self._end_function = f
+        return self
+
+    def add_operation(self, operation: Callable) -> 'DataPipeline':
+        """
+        Adds an operation to the pipeline.
+        The operation is a function, which must have the signature 'f(data, engine) -> data, engine:...'.
+        "data" is the data which have been processed and the "engine" parameter is the engine used top process the data (Numpy or Cupy).
+        Remember to return both of them.
+        This operation function could use indexing conventions (data[data>10]) or use engine's methods (engine.around()).
+        This is possible because the two engines are strongly compatible.
+        :raise PipelineAlreadyRunException: if the pipeline has been already run you cannot add other operations
+        :param operation: the function to adds to the pipeline
+        :return: the pipeline instance
+        :rtype: DataPipeline
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+
+        self._operations.put(operation)
+        return self
+
+    def run(self, use_gpu: bool) -> 'DataPipeline':
+        """
+        Runs the pipeline.
+        Note that if the pipeline uses GPU, this is an ASYNC operation.
+        To synchronize it, use the method get_data().
+        Remeber to configure the pipeline before calling this method: set the data and the end-function.
+        :raise PipelineAlreadyRunException: you cannot re-run a pipeline
+        :raise PipelineConfigurationException: if the pipeline is not correctly configured
+        :param use_gpu: if the pipeline must be executed on gpu
+        :type use_gpu: bool
+        :return: the pipeline
+        :rtype: Pipeline
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+
+        if self._data is None or self._end_function is None:
+            raise PipelineConfigurationException()
+        
+        self._is_run = True
+
+        # Select the engine (NumPy or CuPy)
+        engine = eg.get_engine(eg.NUMPY if not use_gpu else eg.CUPY)
+
+        # IF the pipeline is executed in gpu, transfer data to device (before executing all operation)
+        # and restore data from GPU (after executing the pipeline) is mandatory
+        if use_gpu:
+            self._cuda_stream = engine.cuda.Stream(non_blocking=True)
+            self._data = engine.asarray(self._data)
+            # Transfer data from device at teh end of the pipeline
+            self._operations.put(lambda data, engine: engine.asnumpy(data, stream=self._cuda_stream), engine)
+
+        for operation in self._operations.queue:
+            self._data, engine = operation(self._data, engine)
+
+        return self
+
+    def get_data(self) -> np.ndarray:
+        """
+        Returns the data after the pipeline's execution finishes and call the end-function.
+        This is a SYNC operation, so if the pipeline is running using GPU,
+        the current thread is blocked until all operations in the pipeline are completed.
+        :raise PipelineNotExecutedException: if the pipeline has not yet been executed
+        :return: np.ndarray
+        :rtype: np.ndarray
+        """
+        if not self._is_run:
+            raise PipelineNotExecutedException()
+        if self._use_gpu:
+            self._cuda_stream.synchronize()
+
+        ret = self._end_function(self._data)
+
+        return ret

@@ -1,9 +1,9 @@
 from functools import wraps
-from typing import Dict, Any, Union, Type, Set, TypeVar, Callable, List
+from typing import Dict, Any, Union, Set, TypeVar, Callable
 import numpy as np
 from threading import Lock
 
-from generic_dataset.utilities.data_pipeline import DataPipeline
+from generic_dataset.data_pipeline import DataPipeline
 
 TCallable = TypeVar('TCallable', bound=Callable[..., Any])
 
@@ -138,8 +138,10 @@ class SampleGenerator:
         :raise MethodAlreadyExists: if the method_name already exists
         :param method_name: the name of the method
         :type method_name: str
-        :param field_name: the field to associate the pipeline
-        :type field_name: str
+        :param elaborated_field: the field to elaborate with Pipeline
+        :type elaborated_field: str
+        :param final_field: the field to associate the pipeline
+        :type final_field: str
         :param pipeline:
         :return: SampleGenerator
         """
@@ -221,14 +223,14 @@ class SampleGenerator:
     def _create_add_pipeline_method(self, field_name: str):
 
         @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
-        def f(sample, use_gpu: bool = False) -> DataPipeline:
+        def f(sample) -> DataPipeline:
             """
-            Create and return a new pipeline to elaborate {0}. The given pipeline sets the data to the sample object when get_data() is called
+            Create and return a new pipeline to elaborate {0}.
+            The pipeline is correctly configured, the data to elaborate are {1}
+            and the end-function assigns the pipeline results to the sample instance.
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
             :raises AnotherActivePipelineException: if another pipeline is active
-            :param use_gpu: if this param is true, the pipeline is executed in GPU
-            :type use_gpu: bool
-            :return: a new pipeline instance for {1}
+            :return: a new pipeline instance for {2}
             :rtype DataPipeline
             """
             def assign(data: np.ndarray) -> np.ndarray:
@@ -237,8 +239,8 @@ class SampleGenerator:
                     sample._pipelines[field_name] = None
                     return data
 
-            sample._pipelines[field_name] = DataPipeline(data=sample._fields_value[field_name], use_gpu=use_gpu, end_function=assign)
+            sample._pipelines[field_name] = DataPipeline().set_data(sample._fields_value[field_name]).set_end_function(assign)
             return sample._pipelines[field_name]
 
-        f.__doc__ = f.__doc__.format(field_name, field_name)
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_name)
         return f
