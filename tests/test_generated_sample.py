@@ -50,3 +50,45 @@ def test_setter_getter(use_gpu: bool = False):
     new_value = sample.create_pipeline_for_field_1().add_operation(lambda d, e: (e.array([2]), e)).run(use_gpu=use_gpu).get_data()
     assert np.array_equal(np.asarray([2]), new_value)
     assert np.array_equal(new_value, sample.get_field_1())
+
+
+def tests_pipeline(use_gpu: bool = False):
+    sample = GeneratedSample().set_field_1(np.array([1.1111 for i in range(10000)]))
+    pipeline = sample.create_pipeline_for_field_1().add_operation(lambda d, e: (e.around(d, 2), e))
+    sample.create_pipeline_for_field_2()
+
+    with pytest.raises(AnotherActivePipelineException):
+        sample.create_pipeline_for_field_1()
+
+    with pytest.raises(AnotherActivePipelineException):
+        sample.get_field_1()
+
+    with pytest.raises(AnotherActivePipelineException):
+        sample.set_field_1(np.array([]))
+
+    ret = pipeline.run(use_gpu).get_data()
+
+    assert np.array_equal(ret, np.array([1.11 for i in range(10000)]))
+    assert np.array_equal(sample.get_field_1(), np.array([1.11 for i in range(10000)]))
+
+    sample.create_pipeline_for_field_1()
+
+
+def test_custom_pipeline(use_gpu: bool = False):
+    sample = GeneratedSample().set_field_1(np.array([1.1111 for i in range(10000)]))
+    pipeline = sample.pipeline_field_1_2()
+
+    with pytest.raises(AnotherActivePipelineException):
+        sample.create_pipeline_for_field_1()
+
+    with pytest.raises(AnotherActivePipelineException):
+        sample.create_pipeline_for_field_2()
+
+    ret = pipeline.run(use_gpu).get_data()
+
+    assert np.array_equal(ret, np.array([1 for i in range(10000)]))
+    assert np.array_equal(sample.get_field_1(), np.array([1.1111 for i in range(10000)]))
+    assert np.array_equal(sample.get_field_2(), np.array([1 for i in range(10000)]))
+
+    sample.set_field_2(np.array([2 for i in range(10000)])).create_pipeline_for_field_2().run(use_gpu).get_data()
+    assert np.array_equal(sample.get_field_2(), np.array([2 for i in range(10000)]))
