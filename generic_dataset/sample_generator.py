@@ -72,9 +72,10 @@ def synchronized_on_fields(fields_name: Set[str], check_pipeline: bool) -> Calla
                     if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
                         [lock.release() for lock in locks]
                         raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
-
-            method_result = method(sample, *args, **kwargs)
-            [lock.release() for lock in locks]
+            try:
+                method_result = method(sample, *args, **kwargs)
+            finally:
+                [lock.release() for lock in locks]
             return method_result
         return sync_method
     return decorator
