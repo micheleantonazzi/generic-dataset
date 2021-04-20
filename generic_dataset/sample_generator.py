@@ -223,7 +223,7 @@ class SampleGenerator:
             sample._fields_value[field_name] = value
             return sample
 
-        f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
 
         return f
 
@@ -241,7 +241,7 @@ class SampleGenerator:
             """
             return sample._fields_value[field_name]
 
-        f.__doc__.format(field_name, field_name, field_type.__name__)
+        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__)
 
         return f
 
@@ -275,5 +275,5 @@ class SampleGenerator:
 
             return pipeline_configured
 
-        f.__doc__.format(elaborated_field, elaborated_field, final_field, elaborated_field, final_field)
+        f.__doc__ = f.__doc__.format(elaborated_field, elaborated_field, final_field, elaborated_field, final_field)
         return f
