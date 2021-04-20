@@ -1,5 +1,6 @@
+import copy
 import queue
-from typing import Callable, Any
+from typing import Callable
 
 import numpy as np
 import generic_dataset.utilities.engine_selector as eg
@@ -74,7 +75,7 @@ class DataPipeline:
         """
         Sets the end-function.
         The end-function is executed when the pipeline is terminated, after the run() method when the get_data() is called.
-        The end-function signature must be f(data) -> data, where "data" is the data which have been processed.
+        The end-function signature must be f(data: numpy.ndarray) -> numpy.ndarray, where "data" is the data which have been processed.
         In this function, the programmer can inserts code to execute at the end of the pipeline execution.
         :raise PipelineAlreadyRunException: if the pipeline has been already run you cannot change the end-function during the pipeline execution)
         :param f: the end-function
@@ -160,3 +161,31 @@ class DataPipeline:
         ret = self._end_function(self._data)
 
         return ret
+
+    def set_operations(self, operations: queue.Queue) -> 'DataPipeline':
+        """
+        Replaces the operations queue with the input one.
+        :raise PipelineAlreadyRunException: you cannot set the operation queue of a run pipeline
+        :param operations: the queue with the operations
+        :type operations: Queue
+        :return: the pipeline instance
+        :rtype: DataPipeline
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+
+        self._operations = operations
+        return self
+
+    def get_operations(self) -> queue.Queue:
+        """
+        Returns a copy of the queue containing the pipeline operations
+        :raise PipelineAlreadyRunException: you cannot get the operation queue of a run pipeline
+        :return: the queue with the operations
+        :rtype: Queue
+        """
+        if self._is_run:
+            raise PipelineAlreadyRunException()
+
+        operation = copy.copy(self._operations)
+        return operation

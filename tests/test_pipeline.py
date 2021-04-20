@@ -1,3 +1,5 @@
+import queue
+
 import numpy as np
 import cv2
 import os
@@ -48,6 +50,32 @@ def test_get_data(use_gpu: bool = False):
 
     data = DataPipeline().set_data(data=np.array([])).set_end_function(f=lambda data: np.array([1])).run(use_gpu=use_gpu).get_data()
     assert np.array_equal(data, np.array([1]))
+
+
+def test_pipeline_operation(use_gpu: bool = False):
+    pipeline = DataPipeline().set_data(np.array([])).set_end_function(lambda d:d)
+
+    assert pipeline.get_operations().qsize() == 0
+
+    pipeline.add_operation(operation=lambda data, engine: (data, engine))
+
+    assert pipeline.get_operations().qsize() == 1
+
+    pipeline.add_operation(operation=lambda data, engine: (engine.array([0]), engine))
+
+    pipeline2 = DataPipeline().set_data(data=np.array([1])).set_end_function(lambda d:d).set_operations(pipeline.get_operations())
+
+    assert pipeline.get_operations().qsize() == pipeline2.get_operations().qsize()
+
+    assert np.array_equal(pipeline2.run(use_gpu=use_gpu).get_data(), pipeline.run(use_gpu=use_gpu).get_data())
+
+    with pytest.raises(PipelineAlreadyRunException):
+        pipeline2.get_operations()
+
+    with pytest.raises(PipelineAlreadyRunException):
+        pipeline2.set_operations(queue.Queue())
+
+
 
 
 def test_pipeline_bgr_to_rgb(use_gpu=False):
