@@ -124,7 +124,8 @@ class DataPipeline:
 
         if self._data is None or self._end_function is None:
             raise PipelineConfigurationException()
-        
+
+        self._use_gpu = use_gpu
         self._is_run = True
 
         # Select the engine (NumPy or CuPy)
@@ -132,15 +133,19 @@ class DataPipeline:
 
         # IF the pipeline is executed in gpu, transfer data to device (before executing all operation)
         # and restore data from GPU (after executing the pipeline) is mandatory
-        if use_gpu:
-            self._cuda_stream = engine.cuda.Stream(non_blocking=True)
+        if self._use_gpu:
+            self._cuda_stream = engine.cuda.Stream(null=False, non_blocking=True)
             self._cuda_stream.use()
             self._data = engine.asarray(self._data)
-            # Transfer data from device at teh end of the pipeline
+            # Transfer data from device at the end of the pipeline
             self._operations.put(lambda data, engine: (engine.asnumpy(data, stream=self._cuda_stream), engine))
 
+        ret = self._data
         for operation in self._operations.queue:
-            self._data, engine = operation(self._data, engine)
+
+            ret, engine = operation(ret, engine)
+
+        self._data = ret
 
         return self
 

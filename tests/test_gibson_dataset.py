@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 import pytest
 
@@ -9,17 +11,21 @@ def test_setters_exists(use_gpu: bool = False):
     gibson_sample = GibsonSample()
     gibson_sample.set_depth_data(value=np.array([])).set_depth_image(value=np.array([])).set_color_image(value=np.array([]))
 
+
 def test_getter_exists(use_gpu: bool = False):
     gibson_sample = GibsonSample()
     gibson_sample.get_depth_data()
     gibson_sample.get_color_image()
     gibson_sample.get_depth_data()
 
+
 def test_setter_getter_color_image(use_gpu: bool = False):
     color_image, depth_image, depth_data = tp.load_depth_sample()
     sample = GibsonSample().set_color_image(color_image)
     assert np.array_equal(color_image, sample.get_color_image())
     pipeline = sample.create_pipeline_for_color_image()
+    for c in pipeline.get_operations().queue:
+        print(inspect.signature(c))
     with pytest.raises(AnotherActivePipelineException):
         sample.create_pipeline_for_color_image()
 
@@ -35,7 +41,13 @@ def test_setter_getter_color_image(use_gpu: bool = False):
     except AnotherActivePipelineException:
         assert False
 
-    assert np.array_equal(pipeline.run(use_gpu=use_gpu).get_data(), color_image)
+
+    r = pipeline.run(use_gpu=use_gpu).get_data()
+
+    assert np.array_equal(r, color_image)
+    new_value = sample.create_pipeline_for_color_image().add_operation(lambda d, e: (e.array([2]), e)).run(use_gpu=use_gpu).get_data()
+    assert np.array_equal(np.asarray([2]), new_value)
+    assert np.array_equal(new_value, sample.get_color_image())
 
 
 def test_setter_getter_depth_data(use_gpu: bool = False):

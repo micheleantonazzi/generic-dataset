@@ -1,3 +1,4 @@
+import queue
 from functools import wraps
 from typing import Dict, Any, Union, Set, TypeVar, Callable
 import numpy as np
@@ -20,12 +21,12 @@ class FieldNameAlreadyExistsException(Exception):
         super(FieldNameAlreadyExistsException, self).__init__('A field called "{0}" already exists and cannot be added.'.format(field_name))
 
 
-class FieldDoesNotExistsException(Exception):
+class FieldDoesNotExistException(Exception):
     """
     This exception is raised when an action refers to a non-existent field
     """
     def __init__(self, field_name: str):
-        super(FieldDoesNotExistsException, self).__init__('You cannot use {0} field: it does not exist!!'.format(field_name))
+        super(FieldDoesNotExistException, self).__init__('You cannot use {0} field: it does not exist!!'.format(field_name))
 
 
 class AnotherActivePipelineException(Exception):
@@ -102,7 +103,7 @@ class SampleGenerator:
         self._fields_name: Set[str] = set()
         self._fields_type: Dict[str, type] = {}
         self._fields_dataset: Dict[str, bool] = {}
-        self._custom_methods: Dict[str, Dict[str, Callable]] = {}
+        self._custom_methods: Dict[str, Callable] = {}
 
     def add_field(self, field_name: str, field_type: type, add_to_dataset: bool = True) -> 'SampleGenerator':
         """
@@ -146,7 +147,23 @@ class SampleGenerator:
         :param pipeline:
         :return: SampleGenerator
         """
-        pass
+        if elaborated_field not in self._fields_name:
+            raise FieldDoesNotExistException(field_name=elaborated_field)
+
+        if final_field not in self._fields_name:
+            raise FieldDoesNotExistException(field_name=final_field)
+
+        if self._fields_type[elaborated_field] != np.ndarray:
+            raise FieldHasIncorrectTypeException(elaborated_field)
+
+        if self._fields_type[final_field] != np.ndarray:
+            raise FieldHasIncorrectTypeException(field_name=final_field)
+
+        if method_name is self._custom_methods.keys():
+            raise MethodAlreadyExistsException(method_name=method_name)
+
+        self._custom_methods[method_name] = self._create_add_pipeline_method(elaborated_field=elaborated_field, final_field=final_field, operations=pipeline.get_operations())
+        return self
 
     def generate_sample_class(self) -> 'GeneratedSampleClass':
         """
@@ -163,7 +180,11 @@ class SampleGenerator:
                     class_dict['get_' + field] = self._create_getter(field_name=field)
                     # Add pipeline methods only if field is a numpy.ndarray
                     if self._fields_type[field] == np.ndarray:
-                        class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(field_name=field)
+                        class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(elaborated_field=field, final_field=field)
+
+                # Adds custom methods
+                for method_name, func in self._custom_methods.items():
+                    class_dict[method_name] = func
                 return type.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(Sample, metaclass=MetaSample):
@@ -190,16 +211,19 @@ class SampleGenerator:
             """
             Sets "{0}" parameter.
             If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
+            :raises FieldHasIncorrectTypeException: if the given value has a wrong type
             :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before setting a new value
             :param value: the value to be assigned to {1}
             :type value: {2}
             :return: the {3} object
             :rtype: {4}
             """
+            if sample._fields_type[field_name] != type(value):
+                raise FieldHasIncorrectTypeException(field_name)
             sample._fields_value[field_name] = value
             return sample
 
-        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
+        f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
 
         return f
 
@@ -210,38 +234,46 @@ class SampleGenerator:
         def f(sample) -> field_type:
             """
             Return "{0}" value.
-            If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
+            If the field is an numpy.ndarray and it has an active pipeline, an exception is raised. Terminate it before get the fields value
             :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before getting a new value
             :return: the value of {1}
             :rtype: {2}
             """
             return sample._fields_value[field_name]
 
-        f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__)
+        f.__doc__.format(field_name, field_name, field_type.__name__)
 
         return f
 
-    def _create_add_pipeline_method(self, field_name: str):
+    def _create_add_pipeline_method(self, elaborated_field: str, final_field: str, operations: queue.Queue = None):
+        fields = {elaborated_field, final_field}
 
-        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
+        @synchronized_on_fields(fields_name=fields, check_pipeline=True)
         def f(sample) -> DataPipeline:
             """
-            Create and return a new pipeline to elaborate {0}.
-            The pipeline is correctly configured, the data to elaborate are {1}
-            and the end-function assigns the pipeline results to the sample instance.
+            Creates and returns a new pipeline to elaborate "{0}".
+            The pipeline is correctly configured, the data to elaborate are "{1}"
+            and the pipeline results is set to "{2}" field.
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
             :raises AnotherActivePipelineException: if another pipeline is active
-            :return: a new pipeline instance for {2}
-            :rtype DataPipeline
+            :return: a new pipeline instance which elaborates "{3}" and writes the result into "{4}"
+            :rtype: DataPipeline
             """
             def assign(data: np.ndarray) -> np.ndarray:
-                with sample._locks[field_name]:
-                    sample._fields_value[field_name] = data
-                    sample._pipelines[field_name] = None
-                    return data
+                [sample._locks[field].acquire() for field in fields]
+                sample._fields_value[final_field] = data
+                for field in fields:
+                    sample._pipelines[field] = None
+                [sample._locks[field].release() for field in fields]
+                return data
 
-            sample._pipelines[field_name] = DataPipeline().set_data(sample._fields_value[field_name]).set_end_function(assign)
-            return sample._pipelines[field_name]
+            pipeline_configured = DataPipeline().set_data(sample._fields_value[elaborated_field]).set_end_function(assign)
+            if operations !=  None:
+                pipeline_configured.set_operations(operations)
+            for field in fields:
+                sample._pipelines[field] = pipeline_configured
 
-        f.__doc__ = f.__doc__.format(field_name, field_name, field_name)
+            return pipeline_configured
+
+        f.__doc__.format(elaborated_field, elaborated_field, final_field, elaborated_field, final_field)
         return f
