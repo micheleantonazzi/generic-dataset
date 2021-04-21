@@ -17,18 +17,18 @@ GeneratedSample = SampleGenerator(name='GeneratedSample').add_field(field_name='
 
 
 def test_setters_exists(use_gpu: bool = False):
-    generated_sample = GeneratedSample()
+    generated_sample = GeneratedSample(is_positive=False)
     generated_sample.set_field_1(value=np.array([])).set_field_2(value=np.array([]))
 
 
 def test_getter_exists(use_gpu: bool = False):
-    generated_sample = GeneratedSample()
+    generated_sample = GeneratedSample(is_positive=False)
     generated_sample.get_field_1()
     generated_sample.get_field_2()
 
 
 def test_setter_getter(use_gpu: bool = False):
-    sample = GeneratedSample().set_field_1(np.array([1]))
+    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1]))
     assert np.array_equal(np.array([1]), sample.get_field_1())
 
     with pytest.raises(FieldHasIncorrectTypeException):
@@ -59,7 +59,7 @@ def test_setter_getter(use_gpu: bool = False):
 
 
 def tests_pipeline(use_gpu: bool = False):
-    sample = GeneratedSample().set_field_1(np.array([1.1111 for i in range(10000)]))
+    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1.1111 for i in range(10000)]))
     pipeline = sample.create_pipeline_for_field_1().add_operation(lambda d, e: (e.around(d, 2), e))
     sample.create_pipeline_for_field_2()
 
@@ -81,7 +81,7 @@ def tests_pipeline(use_gpu: bool = False):
 
 
 def test_custom_pipeline(use_gpu: bool = False):
-    sample = GeneratedSample().set_field_1(np.array([1.1111 for i in range(10000)]))
+    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1.1111 for i in range(10000)]))
     pipeline = sample.pipeline_field_1_2()
 
     with pytest.raises(AnotherActivePipelineException):
@@ -101,7 +101,7 @@ def test_custom_pipeline(use_gpu: bool = False):
 
 
 def test_get_dataset_fields(use_gpu: bool = False):
-    generated = GeneratedSample()
+    generated = GeneratedSample(is_positive=False)
 
     generated.create_pipeline_for_field_3()
 

@@ -21,16 +21,16 @@ def test_generate_sample_class():
     GeneratedClass = generator.generate_sample_class()
 
     assert isinstance(GeneratedClass, type)
-    assert isinstance(GeneratedClass(), GenericSample)
-    assert not GeneratedClass().is_positive()
-    assert GeneratedClass().set_is_positive(True).is_positive()
+    assert isinstance(GeneratedClass(is_positive=False), GenericSample)
+    assert not GeneratedClass(is_positive=False).is_positive()
+    assert GeneratedClass(is_positive=False).set_is_positive(True).is_positive()
 
 
 def test_fields_setter_getter():
     generator = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', str, True)
     GeneratedClass = generator.generate_sample_class()
 
-    generated = GeneratedClass()
+    generated = GeneratedClass(is_positive=False)
 
     with pytest.raises(FieldHasIncorrectTypeException):
         generated.set_field('y')
@@ -49,7 +49,7 @@ def test_pipeline_methods():
         .add_field('field2', np.ndarray, True).add_field(
         'field3', int, True).generate_sample_class()
 
-    generated = GeneratedClass().set_field(np.array([2])).set_field2(np.array([1])).set_field3(1)
+    generated = GeneratedClass(is_positive=False).set_field(np.array([2])).set_field2(np.array([1])).set_field3(1)
     with pytest.raises(AttributeError):
         generated.create_pipeline_for_field3()
 
@@ -96,7 +96,7 @@ def test_custom_pipeline(use_gpu: bool = False):
         operation=lambda data, engine: (engine.asarray([2]), engine))) \
         .generate_sample_class()
 
-    generated = GeneratedClass().set_field(np.array([1, 1])).set_field2(np.array([]))
+    generated = GeneratedClass(is_positive=False).set_field(np.array([1, 1])).set_field2(np.array([]))
     pipeline = generated.m()
 
     with pytest.raises(AnotherActivePipelineException):
@@ -129,7 +129,7 @@ def test_custom_method():
     GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
         .add_custom_method(method_name='custom_method', function=f).generate_sample_class()
 
-    generated = GeneratedClass().set_field(np.array([1])).set_field2(np.array([]))
+    generated = GeneratedClass(is_positive=False).set_field(np.array([1])).set_field2(np.array([]))
     assert generated.custom_method(1) == 2
 
     generated.create_pipeline_for_field()

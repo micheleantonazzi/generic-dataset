@@ -202,8 +202,8 @@ class SampleGenerator:
         return GeneratedSampleClass
 
     def _create_constructor(self):
-        def __init__(sample):
-            super(type(sample), sample).__init__(False)
+        def __init__(sample, is_positive: bool):
+            super(type(sample), sample).__init__(is_positive)
 
             sample._fields_name: Set[str] = self._fields_name.copy()
             sample._fields_type: Dict[str, type] = self._fields_type.copy()
