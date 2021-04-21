@@ -1,6 +1,7 @@
 [report]
 omit =
-    generic_dataset/__version__.py
-    generic_dataset/utilities/engine_selector.py
+    ./generic_dataset/__version__.py
+    ./generic_dataset/utilities/engine_selector.py
+
 exclude_lines =
     if self._use_gpu:
