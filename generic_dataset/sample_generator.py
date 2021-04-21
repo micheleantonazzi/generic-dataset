@@ -37,7 +37,7 @@ class MethodAlreadyExistsException(Exception):
 def synchronized_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
     """
     This decorator synchronizes class methods with the fields they use.
-    All methods that use the same field are synchronized with respect to the same lock.
+    All methods that use the same fields are synchronized with respect to the same locks.
     In Addition, it can check also the field's pipeline and eventually raises an exception if there exists an active one.
     :raises AnotherActivePipelineException: if check_pipeline parameter is True and there is an active pipeline for the given field
     :param fields_name: the Set containing the fields name ot synchronize
@@ -48,17 +48,17 @@ def synchronized_on_fields(fields_name: Set[str], check_pipeline: bool) -> Calla
         @wraps(method)
         def sync_method(sample, *args, **kwargs):
             locks = [sample._locks[field_name] for field_name in fields_name]
-            [lock.acquire() for lock in locks]
-            if check_pipeline:
-                for field_name in fields_name:
-                    if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
-                        [lock.release() for lock in locks]
-                        raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
             try:
-                method_result = method(sample, *args, **kwargs)
+                [lock.acquire() for lock in locks]
+                if check_pipeline:
+                    for field_name in fields_name:
+                        if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
+                            raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
+
+                return method(sample, *args, **kwargs)
             finally:
                 [lock.release() for lock in locks]
-            return method_result
+
         return sync_method
     return decorator
 
