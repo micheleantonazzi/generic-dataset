@@ -1,4 +1,5 @@
 import queue
+from abc import ABCMeta
 from functools import wraps
 from typing import Dict, Any, Union, Set, TypeVar, Callable
 import numpy as np
@@ -173,7 +174,7 @@ class SampleGenerator:
         Generates the sample class.
         :return: the sample class definition
         """
-        class MetaSample(type):
+        class MetaSample(ABCMeta):
             def __new__(cls, name, bases, class_dict):
                 class_dict['__init__'] = self._create_constructor()
 
@@ -189,10 +190,15 @@ class SampleGenerator:
                 # Adds custom methods
                 for method_name, func in self._custom_methods.items():
                     class_dict[method_name] = func
-                return type.__new__(cls, self._name, bases, class_dict)
+
+                return ABCMeta.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
-            pass
+            def get_dataset_fields(sample) -> Set[str]:
+                return {field_name for field_name in self._fields_dataset.keys() if self._fields_dataset[field_name]}
+
+        GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
+
         return GeneratedSampleClass
 
     def _create_constructor(self):

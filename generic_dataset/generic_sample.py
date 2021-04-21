@@ -1,3 +1,7 @@
+from abc import abstractmethod, ABCMeta
+from typing import Set
+
+
 class AnotherActivePipelineException(Exception):
     """
     This exception is raised when an active pipeline already exists for a field
@@ -14,7 +18,7 @@ class FieldHasIncorrectTypeException(Exception):
         super(FieldHasIncorrectTypeException, self).__init__('There is a type issue: the {0} field has an incompatible type!'.format(field_name))
 
 
-class GenericSample:
+class GenericSample(metaclass=ABCMeta):
     """
     This base class represents a generic sample, which can be specialized using SampleGenerator.
     """
@@ -27,3 +31,12 @@ class GenericSample:
     def set_is_positive(self, is_positive: bool) -> 'GenericSample':
         self._is_positive = is_positive
         return self
+
+    @abstractmethod
+    def get_dataset_fields(self) -> Set[str]:
+        """
+        Returns the parameter names that belong to the dataset (those must be saved and load from disk)
+        :return: the parameter names set
+        :rtype: Set[str]
+        """
+        pass

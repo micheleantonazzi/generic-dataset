@@ -11,6 +11,7 @@ from generic_dataset.sample_generator import SampleGenerator
 pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.array([1 for i in range(10000)]), engine))
 GeneratedSample = SampleGenerator(name='GeneratedSample').add_field(field_name='field_1', field_type=np.ndarray, add_to_dataset=True)\
     .add_field(field_name='field_2', field_type=np.ndarray, add_to_dataset=True)\
+    .add_field(field_name='field_3', field_type=np.ndarray, add_to_dataset=False) \
     .add_custom_pipeline(method_name='pipeline_field_1_2', elaborated_field='field_1', final_field='field_2', pipeline=pipeline_field_1_2)\
     .generate_sample_class()
 
@@ -97,3 +98,15 @@ def test_custom_pipeline(use_gpu: bool = False):
 
     sample.set_field_2(np.array([2 for i in range(10000)])).create_pipeline_for_field_2().run(use_gpu).get_data()
     assert np.array_equal(sample.get_field_2(), np.array([2 for i in range(10000)]))
+
+
+def test_get_dataset_fields(use_gpu: bool = False):
+    generated = GeneratedSample()
+
+    generated.create_pipeline_for_field_3()
+
+    dataset_fields = generated.get_dataset_fields()
+
+    assert 'field_1' in dataset_fields
+    assert 'field_2' in dataset_fields
+    assert not 'field_3' in dataset_fields
