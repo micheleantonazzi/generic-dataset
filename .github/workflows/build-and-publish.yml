@@ -59,7 +59,7 @@ jobs:
           pip install .[test]
       - name: Test with pytest
         run: |
-          pytest --cov=generic_dataset --cov-report xml:coverage.xml --ignore-glob *gpu*.py
+          pytest --cov=generic_dataset --cov-report xml:coverage.xml --ignore-glob *gpu*.py --cov-config=.coveragerc
           coverage combine --append || true
           coverage report
           coverage xml
