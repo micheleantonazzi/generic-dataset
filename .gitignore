@@ -1,3 +1,4 @@
+dataset_folder/
 *.pyi
 .idea/
 # Byte-compiled / optimized / DLL files
