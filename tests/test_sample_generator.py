@@ -15,12 +15,16 @@ def test_add_field():
     with pytest.raises(FieldNameAlreadyExistsException):
         generator.add_field('a', int)
 
+
 def test_generate_sample_class():
     generator = SampleGenerator(name='Sample')
     GeneratedClass = generator.generate_sample_class()
 
     assert isinstance(GeneratedClass, type)
     assert isinstance(GeneratedClass(), GenericSample)
+    assert not GeneratedClass().is_positive()
+    assert GeneratedClass().set_is_positive(True).is_positive()
+
 
 def test_fields_setter_getter():
     generator = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', str)
@@ -41,10 +45,11 @@ def test_fields_setter_getter():
 
 
 def test_pipeline_methods():
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray).add_field('field3', int).generate_sample_class()
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2',
+                                                                                                              np.ndarray).add_field(
+        'field3', int).generate_sample_class()
 
     generated = GeneratedClass().set_field(np.array([2])).set_field2(np.array([1])).set_field3(1)
-
     with pytest.raises(AttributeError):
         generated.create_pipeline_for_field3()
 
@@ -66,11 +71,11 @@ def test_pipeline_methods():
 def test_custom_pipeline(use_gpu: bool = False):
     with pytest.raises(MethodAlreadyExistsException):
         SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
-            .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())\
+            .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline()) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
     with pytest.raises(FieldDoesNotExistException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray)\
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='f', final_field='field2', pipeline=DataPipeline())
 
     with pytest.raises(FieldDoesNotExistException):
@@ -85,8 +90,10 @@ def test_custom_pipeline(use_gpu: bool = False):
         SampleGenerator('Sample').add_field(field_name='field', field_type=int).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
-        .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline().add_operation(operation=lambda data, engine: (engine.asarray([2]), engine)))\
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2',
+                                                                                                              np.ndarray) \
+        .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline().add_operation(
+        operation=lambda data, engine: (engine.asarray([2]), engine))) \
         .generate_sample_class()
 
     generated = GeneratedClass().set_field(np.array([1, 1])).set_field2(np.array([]))
@@ -105,6 +112,6 @@ def test_custom_pipeline(use_gpu: bool = False):
 
     res = pipeline.run(use_gpu).get_data()
 
-    assert np.array_equal(generated.get_field(), np.array([1,1]))
+    assert np.array_equal(generated.get_field(), np.array([1, 1]))
     assert np.array_equal(generated.get_field2(), np.array([2]))
     assert np.array_equal(res, generated.get_field2())

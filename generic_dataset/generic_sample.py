@@ -18,4 +18,12 @@ class GenericSample:
     """
     This base class represents a generic sample, which can be specialized using SampleGenerator.
     """
-    pass
+    def __init__(self, is_positive: bool):
+        self._is_positive = is_positive
+
+    def is_positive(self) -> bool:
+        return self._is_positive
+
+    def set_is_positive(self, is_positive: bool) -> 'GenericSample':
+        self._is_positive = is_positive
+        return self

@@ -164,6 +164,7 @@ class SampleGenerator:
                     if self._fields_type[field] == np.ndarray:
                         class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(elaborated_field=field, final_field=field)
                         class_dict['get_pipeline_' + field] = self._create_get_pipeline(field)
+
                 # Adds custom methods
                 for method_name, func in self._custom_methods.items():
                     class_dict[method_name] = func
@@ -175,6 +176,8 @@ class SampleGenerator:
 
     def _create_constructor(self):
         def __init__(sample):
+            super(type(sample), sample).__init__(False)
+
             sample._fields_name: Set[str] = self._fields_name.copy()
             sample._fields_type: Dict[str, type] = self._fields_type.copy()
             sample._fields_value: Dict[str, Any] = {field_name: None for field_name in sample._fields_name}
