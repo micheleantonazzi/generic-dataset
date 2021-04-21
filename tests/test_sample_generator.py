@@ -46,13 +46,20 @@ def test_pipeline_methods():
     with pytest.raises(AttributeError):
         generated.create_pipeline_for_field3()
 
+    with pytest.raises(AttributeError):
+        generated.get_pipeline_field3()
+
     pipeline_field = generated.create_pipeline_for_field()
+
+    assert pipeline_field == generated.get_pipeline_field()
+    assert pipeline_field != generated.create_pipeline_for_field2()
 
     with pytest.raises(AnotherActivePipelineException):
         generated.create_pipeline_for_field()
 
     res = pipeline_field.run(False).get_data()
-    generated.create_pipeline_for_field()
+    assert pipeline_field != generated.create_pipeline_for_field()
+
 
 
 def test_custom_pipeline(use_gpu: bool = False):

@@ -91,7 +91,8 @@ class SampleGenerator:
     SampleGenerator automatically creates the following default method for each field:
     - get_{field_name}: getter
     - set_{field_name}: setter
-    - create_pipeline_for_{field_name}: return a DataPipeline to elaborate the correspondent field
+    - create_pipeline_for_{field_name}: returns a DataPipeline to elaborate the correspondent field
+    - get_{field_name}_pipeline: returns the pipeline instance for the specified field
     In addition, other methods can be created and associated to a precise property.
     For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
     specified by the programmer.
@@ -181,7 +182,7 @@ class SampleGenerator:
                     # Add pipeline methods only if field is a numpy.ndarray
                     if self._fields_type[field] == np.ndarray:
                         class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(elaborated_field=field, final_field=field)
-
+                        class_dict['get_pipeline_' + field] = self._create_get_pipeline(field)
                 # Adds custom methods
                 for method_name, func in self._custom_methods.items():
                     class_dict[method_name] = func
@@ -253,9 +254,9 @@ class SampleGenerator:
             """
             Creates and returns a new pipeline to elaborate "{0}".
             The pipeline is correctly configured, the data to elaborate are "{1}"
-            and the pipeline results is set to "{2}" field.
+            and the pipeline results is set to "{2}".
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
-            :raises AnotherActivePipelineException: if another pipeline is active
+            :raises AnotherActivePipelineException: if other pipeline of the fields are active
             :return: a new pipeline instance which elaborates "{3}" and writes the result into "{4}"
             :rtype: DataPipeline
             """
@@ -276,4 +277,18 @@ class SampleGenerator:
             return pipeline_configured
 
         f.__doc__ = f.__doc__.format(elaborated_field, elaborated_field, final_field, elaborated_field, final_field)
+        return f
+
+    def _create_get_pipeline(self, field_name: str):
+
+        @synchronized_on_fields(fields_name={field_name}, check_pipeline=False)
+        def f(sample) -> DataPipeline:
+            """
+            Returns the pipeline of {0}. If there isn't an active pipeline, returns None.
+            :return: the pipeline if it exists, None otherwise
+            :rtype: Union[None, DataPipeline]
+            """
+            return sample._pipelines[field_name]
+
+        f.__doc__ = f.__doc__.format(field_name)
         return f
