@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyExistsException, Sample, \
-    FieldHasIncorrectTypeException, AnotherActivePipelineException, FieldDoesNotExistException, \
+from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, FieldHasIncorrectTypeException
+from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyExistsException, \
+    FieldDoesNotExistException, \
     MethodAlreadyExistsException
 
 
@@ -19,7 +20,7 @@ def test_generate_sample_class():
     GeneratedClass = generator.generate_sample_class()
 
     assert isinstance(GeneratedClass, type)
-    assert isinstance(GeneratedClass(), Sample)
+    assert isinstance(GeneratedClass(), GenericSample)
 
 def test_fields_setter_getter():
     generator = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', str)

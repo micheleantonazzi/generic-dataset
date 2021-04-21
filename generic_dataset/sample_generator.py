@@ -5,12 +5,9 @@ import numpy as np
 from threading import Lock
 
 from generic_dataset.data_pipeline import DataPipeline
+from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, FieldHasIncorrectTypeException
 
 TCallable = TypeVar('TCallable', bound=Callable[..., Any])
-
-
-class Sample:
-    pass
 
 
 class FieldNameAlreadyExistsException(Exception):
@@ -27,22 +24,6 @@ class FieldDoesNotExistException(Exception):
     """
     def __init__(self, field_name: str):
         super(FieldDoesNotExistException, self).__init__('You cannot use {0} field: it does not exist!!'.format(field_name))
-
-
-class AnotherActivePipelineException(Exception):
-    """
-    This exception is raised when an active pipeline already exists for a field
-    """
-    def __init__(self, field_name: str):
-        super(AnotherActivePipelineException, self).__init__('A Pipeline for the field "{0}" already exists, terminate it before using this method'.format(field_name))
-
-
-class FieldHasIncorrectTypeException(Exception):
-    """
-    This exception is raised when an action is performed on a field which has an incompatible type
-    """
-    def __init__(self, field_name: str):
-        super(FieldHasIncorrectTypeException, self).__init__('There is a type issue: the {0} field has an incompatible type!'.format(field_name))
 
 
 class MethodAlreadyExistsException(Exception):
@@ -188,7 +169,7 @@ class SampleGenerator:
                     class_dict[method_name] = func
                 return type.__new__(cls, self._name, bases, class_dict)
 
-        class GeneratedSampleClass(Sample, metaclass=MetaSample):
+        class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
             pass
         return GeneratedSampleClass
 

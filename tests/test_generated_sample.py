@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.sample_generator import SampleGenerator, AnotherActivePipelineException
+from generic_dataset.generic_sample import FieldHasIncorrectTypeException, AnotherActivePipelineException
+from generic_dataset.sample_generator import SampleGenerator
 
 
 pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.array([1 for i in range(10000)]), engine))
@@ -28,6 +29,9 @@ def test_getter_exists(use_gpu: bool = False):
 def test_setter_getter(use_gpu: bool = False):
     sample = GeneratedSample().set_field_1(np.array([1]))
     assert np.array_equal(np.array([1]), sample.get_field_1())
+
+    with pytest.raises(FieldHasIncorrectTypeException):
+        sample.set_field_1(3)
 
     pipeline = sample.create_pipeline_for_field_1()
 
