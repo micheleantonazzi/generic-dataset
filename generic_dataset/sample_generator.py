@@ -34,7 +34,7 @@ class MethodAlreadyExistsException(Exception):
         super(MethodAlreadyExistsException, self).__init__('A method called {0} already exists: you cannot add a new one!!'.format(method_name))
 
 
-def synchronized_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
+def synchronize_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
     """
     This decorator synchronizes class methods with the fields they use.
     All methods that use the same fields are synchronized with respect to the same locks.
@@ -147,6 +147,27 @@ class SampleGenerator:
         self._custom_methods[method_name] = self._create_add_pipeline_method(elaborated_field=elaborated_field, final_field=final_field, operations=pipeline.get_operations())
         return self
 
+    def add_custom_method(self, method_name: str, function: Callable) -> 'SampleGenerator':
+        """
+        Adds to the generated sample class a generic function as a class method.
+        Remember that the function's signature must have at least one parameter (self).
+        Annotate your customized function with type hints and docstring: these information are reported in the stub file.
+        Remember to annotate the function with the synchronize_on_field decorator to ensure the 'thread safe' condition
+        and pipeline checking on the fields that the method uses.
+        :raise MethodAlreadyExistsException: if the method name already exists
+        :param method_name: the name of the method
+        :type method_name: str
+        :param function: the function to add as class method
+        :type function: Callable
+        :return: the sample generator instance
+        :rtype: SampleGenerator
+        """
+        if method_name in self._custom_methods.keys():
+            raise MethodAlreadyExistsException(method_name=method_name)
+
+        self._custom_methods[method_name] = function
+        return self
+
     def generate_sample_class(self) -> 'GeneratedSampleClass':
         """
         Generates the sample class.
@@ -191,7 +212,7 @@ class SampleGenerator:
         field_type: type = self._fields_type[field_name]
         class_name = self._name
 
-        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
+        @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
         def f(sample, value: field_type) -> class_name:
             """
             Sets "{0}" parameter.
@@ -215,7 +236,7 @@ class SampleGenerator:
     def _create_getter(self, field_name: str):
         field_type: type = self._fields_type[field_name]
 
-        @synchronized_on_fields(fields_name={field_name}, check_pipeline=True)
+        @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
         def f(sample) -> field_type:
             """
             Return "{0}" value.
@@ -233,7 +254,7 @@ class SampleGenerator:
     def _create_add_pipeline_method(self, elaborated_field: str, final_field: str, operations: queue.Queue = None):
         fields = {elaborated_field, final_field}
 
-        @synchronized_on_fields(fields_name=fields, check_pipeline=True)
+        @synchronize_on_fields(fields_name=fields, check_pipeline=True)
         def f(sample) -> DataPipeline:
             """
             Creates and returns a new pipeline to elaborate "{0}".
@@ -265,7 +286,7 @@ class SampleGenerator:
 
     def _create_get_pipeline(self, field_name: str):
 
-        @synchronized_on_fields(fields_name={field_name}, check_pipeline=False)
+        @synchronize_on_fields(fields_name={field_name}, check_pipeline=False)
         def f(sample) -> DataPipeline:
             """
             Returns the pipeline of {0}. If there isn't an active pipeline, returns None.

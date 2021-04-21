@@ -5,7 +5,7 @@ from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, FieldHasIncorrectTypeException
 from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyExistsException, \
     FieldDoesNotExistException, \
-    MethodAlreadyExistsException
+    MethodAlreadyExistsException, synchronize_on_fields
 
 
 def test_add_field():
@@ -115,3 +115,33 @@ def test_custom_pipeline(use_gpu: bool = False):
     assert np.array_equal(generated.get_field(), np.array([1, 1]))
     assert np.array_equal(generated.get_field2(), np.array([2]))
     assert np.array_equal(res, generated.get_field2())
+
+
+def test_custom_method():
+    with pytest.raises(MethodAlreadyExistsException):
+        SampleGenerator('Sample').add_custom_method(method_name='m', function=lambda d:d).add_custom_method(method_name='m', function=lambda m:m)
+
+    @synchronize_on_fields({'field', 'field2'}, check_pipeline=True)
+    def f(sample: GenericSample, i: int) -> int:
+        sample.set_is_positive(False)
+        return i + 1
+
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
+        .add_custom_method(method_name='custom_method', function=f).generate_sample_class()
+
+    generated = GeneratedClass().set_field(np.array([1])).set_field2(np.array([]))
+    assert generated.custom_method(1) == 2
+
+    generated.create_pipeline_for_field()
+
+    with pytest.raises(AnotherActivePipelineException):
+        generated.custom_method(1)
+
+    generated.get_pipeline_field().run(False).get_data()
+
+    assert generated.custom_method(2) == 3
+
+    generated.set_is_positive(True)
+    generated.custom_method(2)
+
+    assert not generated.is_positive()
