@@ -30,9 +30,10 @@ def find_version(*file_paths):
 
 __version__ = find_version("generic_dataset", "__version__.py")
 
-test_deps =[
+test_deps = [
     "pytest",
     "pytest-cov",
+    "opencv-python"
 ]
 
 extras = {
