@@ -87,7 +87,7 @@ class SampleGenerator:
         self._fields_dataset: Dict[str, bool] = {}
         self._custom_methods: Dict[str, Callable] = {}
 
-    def add_field(self, field_name: str, field_type: type, add_to_dataset: bool = True) -> 'SampleGenerator':
+    def add_field(self, field_name: str, field_type: type, add_to_dataset: bool) -> 'SampleGenerator':
         """
         Adds a field with the given name and type. The created field can be considered part of the dataset or not,
         based on the value of add_to_dataset_field. If it is True, this field is saved and loaded from disk.
