@@ -5,3 +5,4 @@ omit =
 
 exclude_lines =
     if self._use_gpu:
+    pass
