@@ -160,7 +160,7 @@ class SampleGenerator:
         if self._fields_type[final_field] != np.ndarray:
             raise FieldHasIncorrectTypeException(field_name=final_field)
 
-        if method_name is self._custom_methods.keys():
+        if method_name in self._custom_methods.keys():
             raise MethodAlreadyExistsException(method_name=method_name)
 
         self._custom_methods[method_name] = self._create_add_pipeline_method(elaborated_field=elaborated_field, final_field=final_field, operations=pipeline.get_operations())

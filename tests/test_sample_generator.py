@@ -3,7 +3,8 @@ import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyExistsException, Sample, \
-    FieldHasIncorrectTypeException, AnotherActivePipelineException, FieldDoesNotExistException
+    FieldHasIncorrectTypeException, AnotherActivePipelineException, FieldDoesNotExistException, \
+    MethodAlreadyExistsException
 
 
 def test_add_field():
@@ -61,8 +62,12 @@ def test_pipeline_methods():
     assert pipeline_field != generated.create_pipeline_for_field()
 
 
-
 def test_custom_pipeline(use_gpu: bool = False):
+    with pytest.raises(MethodAlreadyExistsException):
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
+            .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())\
+            .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
+
     with pytest.raises(FieldDoesNotExistException):
         SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray)\
             .add_custom_pipeline('m', elaborated_field='f', final_field='field2', pipeline=DataPipeline())

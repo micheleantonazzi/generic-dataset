@@ -6,6 +6,7 @@ import pytest
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.sample_generator import SampleGenerator, AnotherActivePipelineException
 
+
 pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.array([1 for i in range(10000)]), engine))
 GeneratedSample = SampleGenerator(name='GeneratedSample').add_field(field_name='field_1', field_type=np.ndarray)\
     .add_field(field_name='field_2', field_type=np.ndarray)\
