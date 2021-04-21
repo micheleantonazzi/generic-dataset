@@ -73,9 +73,10 @@ def test_pipeline_operation(use_gpu: bool = False):
         pipeline2.get_operations()
 
     with pytest.raises(PipelineAlreadyRunException):
+        pipeline2.add_operation(lambda d, e: (d, e))
+
+    with pytest.raises(PipelineAlreadyRunException):
         pipeline2.set_operations(queue.Queue())
-
-
 
 
 def test_pipeline_bgr_to_rgb(use_gpu=False):

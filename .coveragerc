@@ -1,0 +1,5 @@
+[report]
+omit =
+    generic_dataset/__version__.py
+exclude_lines =
+    if self._use_gpu:
