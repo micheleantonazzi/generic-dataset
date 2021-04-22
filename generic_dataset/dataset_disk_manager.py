@@ -79,6 +79,7 @@ class DatasetDiskManager:
     def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[NoReturn, threading.Thread]:
         """
         Saves to disk the given sample.
+        :raise TypeError: if the sample has a wrong type
         :param sample: the sample to save
         :param use_thread: if True, this method saves files in a separate thread
         :return: it use_thread is True, returns the thread in which the fields are saved, returns None otherwise
