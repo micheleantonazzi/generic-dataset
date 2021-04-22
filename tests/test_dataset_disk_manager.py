@@ -40,7 +40,11 @@ def test_count_samples():
 
 def test_save_fields():
     shutil.rmtree(path, ignore_errors=True)
+    GeneratedSample2 = SampleGenerator('GeneratedSample2').generate_sample_class()
     dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample=GeneratedSample(is_positive=False))
+
+    with pytest.raises(TypeError):
+        dataset.save_sample(GeneratedSample2(is_positive=False), False)
 
     sample = GeneratedSample(is_positive=False).set_field_1(np.array([11.1 for _ in range(10000)])).set_field_2(np.array([1 for _ in range(10000)]))
     dataset.save_sample(sample, False)
