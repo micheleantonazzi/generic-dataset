@@ -225,7 +225,10 @@ class SampleGenerator:
             def get_dataset_fields(sample) -> Set[str]:
                 return sample._fields_dataset.keys()
 
+        # Copy the docstrings of the override methods
         GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
+        GeneratedSampleClass.save_field.__doc__ = GenericSample.save_field.__doc__
+        GeneratedSampleClass.load_field.__doc__ = GenericSample.load_field.__doc__
 
         return GeneratedSampleClass
 
@@ -323,18 +326,6 @@ class SampleGenerator:
         class_name = self._name
 
         def f(sample, field_name: str, path: str) -> class_name:
-            """
-            Saves the given field to disk, in the given path.
-            :raise FieldDoesNotExistException: if field_name do not exist in this sample class
-            :raise FieldIsNotDatasetPart: if the field is not a part of dataset
-            :raise AnotherActivePipelineException if there is an active pipeline for this field
-            :raise FileNotFoundError: if the path does not exist
-            :param field_name: the name of the field to save
-            :type field_name: str
-            :param path: the path where save the field value
-            :type path: str
-            :return: the sample instance
-            """
             if field_name not in sample._fields_name:
                 raise FieldDoesNotExistException(field_name=field_name)
 
@@ -354,20 +345,6 @@ class SampleGenerator:
         class_name = self._name
 
         def f(sample, field_name: str, path: str) -> class_name:
-            """
-            Loads the given field from disk, saved in the given path.
-            The field value is not returned by this method but it is set to the sample class.
-            To retrieve it use the correspondent get method.
-            :raise FieldDoesNotExistException: if field_name do not exist in this sample class
-            :raise FieldIsNotDatasetPart: if the field is not a part of dataset
-            :raise AnotherActivePipelineException if there is an active pipeline for this field
-            :raise FileNotFoundError: if the path does not exist
-            :param field_name: the name of the field to save
-            :type field_name: str
-            :param path: the path where loading the field value
-            :type path: str
-            :return: the sample instance
-            """
             if field_name not in sample._fields_name:
                 raise FieldDoesNotExistException(field_name=field_name)
 

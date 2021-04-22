@@ -46,3 +46,37 @@ class GenericSample(metaclass=ABCMeta):
         :rtype: Set[str]
         """
         pass
+
+    @abstractmethod
+    def save_field(self, field_name: str, path: str) -> 'GenericSample':
+        """
+        Saves the given field to disk, in the given path.
+        :raise FieldDoesNotExistException: if field_name do not exist in this sample class
+        :raise FieldIsNotDatasetPart: if the field is not a part of dataset
+        :raise AnotherActivePipelineException if there is an active pipeline for this field
+        :raise FileNotFoundError: if the path does not exist
+        :param field_name: the name of the field to save
+        :type field_name: str
+        :param path: the path where save the field value
+        :type path: str
+        :returns the sample instance
+        """
+        pass
+
+    @abstractmethod
+    def load_field(self, field_name: str, path: str) -> 'GenericSample':
+        """
+        Loads the given field from disk, saved in the given path.
+        The field value is not returned by this method but it is set to the sample class.
+        To retrieve it use the correspondent get method.
+        :raise FieldDoesNotExistException: if field_name do not exist in this sample class
+        :raise FieldIsNotDatasetPart: if the field is not a part of dataset
+        :raise AnotherActivePipelineException if there is an active pipeline for this field
+        :raise FileNotFoundError: if the path does not exist
+        :param field_name: the name of the field to save
+        :type field_name: str
+        :param path: the path where loading the field value
+        :type path: str
+        :return: the sample instance
+        """
+        pass
