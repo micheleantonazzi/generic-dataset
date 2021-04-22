@@ -10,10 +10,10 @@ from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyEx
 
 def test_add_field():
     generator = SampleGenerator(name='Sample')
-    generator.add_field('a', np.ndarray, True)
+    generator.add_field('a', np.ndarray)
 
     with pytest.raises(FieldNameAlreadyExistsException):
-        generator.add_field('a', int, True)
+        generator.add_field('a', int)
 
 
 def test_generate_sample_class():
@@ -27,7 +27,7 @@ def test_generate_sample_class():
 
 
 def test_fields_setter_getter():
-    generator = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', str, True)
+    generator = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_dataset_field('field2', str, lambda d:d, lambda d:d)
     GeneratedClass = generator.generate_sample_class()
 
     generated = GeneratedClass(is_positive=False)
@@ -41,13 +41,20 @@ def test_fields_setter_getter():
     assert generated.get_field2() == 'Hi'
 
     with pytest.raises(FieldNameAlreadyExistsException):
-        SampleGenerator('S').add_field(field_name='f', field_type=str, add_to_dataset=True).add_field(field_name='f', field_type=int, add_to_dataset=True)
+        SampleGenerator('S').add_field(field_name='f', field_type=str).add_field(field_name='f', field_type=int)
+
+    with pytest.raises(FieldNameAlreadyExistsException):
+        SampleGenerator('S').add_dataset_field(field_name='f', field_type=str, save_function=lambda d:d, load_function=lambda d:d).add_field(field_name='f', field_type=int)
+
+    with pytest.raises(FieldNameAlreadyExistsException):
+        SampleGenerator('S').add_dataset_field(field_name='f', field_type=str, save_function=lambda d:d, load_function=lambda d:d)\
+            .add_dataset_field(field_name='f', field_type=str, save_function=lambda d:d, load_function=lambda d:d)
 
 
 def test_pipeline_methods():
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True)\
-        .add_field('field2', np.ndarray, True).add_field(
-        'field3', int, True).generate_sample_class()
+    GeneratedClass = SampleGenerator('Sample').add_dataset_field(field_name='field', field_type=np.ndarray, save_function=lambda d:d, load_function=lambda d:d)\
+        .add_field('field2', np.ndarray).add_field(
+        'field3', int).generate_sample_class()
 
     generated = GeneratedClass(is_positive=False).set_field(np.array([2])).set_field2(np.array([1])).set_field3(1)
     with pytest.raises(AttributeError):
@@ -70,28 +77,28 @@ def test_pipeline_methods():
 
 def test_custom_pipeline(use_gpu: bool = False):
     with pytest.raises(MethodAlreadyExistsException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline()) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
     with pytest.raises(FieldDoesNotExistException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='f', final_field='field2', pipeline=DataPipeline())
 
     with pytest.raises(FieldDoesNotExistException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field22', pipeline=DataPipeline())
 
     with pytest.raises(FieldHasIncorrectTypeException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', int, add_to_dataset=True) \
+        SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', int) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
     with pytest.raises(FieldHasIncorrectTypeException):
-        SampleGenerator('Sample').add_field(field_name='field', field_type=int, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
+        SampleGenerator('Sample').add_field(field_name='field', field_type=int).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2',
-                                                                                                              np.ndarray, add_to_dataset=True) \
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2',
+                                                                                                              np.ndarray) \
         .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline().add_operation(
         operation=lambda data, engine: (engine.asarray([2]), engine))) \
         .generate_sample_class()
@@ -126,7 +133,7 @@ def test_custom_method():
         sample.set_is_positive(False)
         return i + 1
 
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray, add_to_dataset=True).add_field('field2', np.ndarray, add_to_dataset=True) \
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
         .add_custom_method(method_name='custom_method', function=f).generate_sample_class()
 
     generated = GeneratedClass(is_positive=False).set_field(np.array([1])).set_field2(np.array([]))

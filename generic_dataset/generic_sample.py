@@ -18,6 +18,12 @@ class FieldHasIncorrectTypeException(Exception):
         super(FieldHasIncorrectTypeException, self).__init__('There is a type issue: the {0} field has an incompatible type!'.format(field_name))
 
 
+class FieldIsNotDatasetPart(Exception):
+    """
+    This exception is raised when a field is not a part of dataset
+    """
+
+
 class GenericSample(metaclass=ABCMeta):
     """
     This base class represents a generic sample, which can be specialized using SampleGenerator.

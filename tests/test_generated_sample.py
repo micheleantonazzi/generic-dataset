@@ -1,17 +1,26 @@
 import inspect
+import os
 
 import numpy as np
 import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.generic_sample import FieldHasIncorrectTypeException, AnotherActivePipelineException
-from generic_dataset.sample_generator import SampleGenerator
+from generic_dataset.generic_sample import FieldHasIncorrectTypeException, AnotherActivePipelineException, \
+    FieldIsNotDatasetPart
+from generic_dataset.sample_generator import SampleGenerator, FieldDoesNotExistException
+import generic_dataset.utilities.save_load_methods as slm
+
+
+test_save_load_path = os.path.join(os.path.dirname(__file__), 'test_folder_save_load_methods')
+if not os.path.exists(test_save_load_path):
+    os.mkdir(test_save_load_path)
 
 
 pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.array([1 for i in range(10000)]), engine))
-GeneratedSample = SampleGenerator(name='GeneratedSample').add_field(field_name='field_1', field_type=np.ndarray, add_to_dataset=True)\
-    .add_field(field_name='field_2', field_type=np.ndarray, add_to_dataset=True)\
-    .add_field(field_name='field_3', field_type=np.ndarray, add_to_dataset=False) \
+GeneratedSample = SampleGenerator(name='GeneratedSample')\
+    .add_dataset_field(field_name='field_1', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
+    .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
+    .add_field(field_name='field_3', field_type=np.ndarray) \
     .add_custom_pipeline(method_name='pipeline_field_1_2', elaborated_field='field_1', final_field='field_2', pipeline=pipeline_field_1_2)\
     .generate_sample_class()
 
@@ -110,3 +119,46 @@ def test_get_dataset_fields(use_gpu: bool = False):
     assert 'field_1' in dataset_fields
     assert 'field_2' in dataset_fields
     assert not 'field_3' in dataset_fields
+
+def test_save_load_generic_field(use_gpu = False):
+    generated = GeneratedSample(is_positive=False).set_field_1(np.array([1]))
+
+    with pytest.raises(FieldDoesNotExistException):
+        generated.save_field(field_name='field', path='')
+
+    with pytest.raises(FieldIsNotDatasetPart):
+        generated.save_field(field_name='field_3', path='')
+
+    with pytest.raises(FileNotFoundError):
+        generated.save_field(field_name='field_1', path='')
+
+    generated.create_pipeline_for_field_1()
+
+    with pytest.raises(AnotherActivePipelineException):
+        generated.save_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+
+    generated.get_pipeline_field_1().run(use_gpu).get_data()
+
+    generated.save_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+
+    # Load
+    with pytest.raises(FieldDoesNotExistException):
+        generated.load_field(field_name='field', path='')
+
+    with pytest.raises(FieldIsNotDatasetPart):
+        generated.load_field(field_name='field_3', path='')
+
+    with pytest.raises(FileNotFoundError):
+        generated.load_field(field_name='field_1', path='')
+
+    generated.create_pipeline_for_field_1()
+
+    with pytest.raises(AnotherActivePipelineException):
+        generated.load_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+
+    generated.get_pipeline_field_1().run(use_gpu).get_data()
+
+    generated.set_field_1(np.array([2]))
+    generated.load_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+
+    assert np.array_equal(generated.get_field_1(), np.array([1]))

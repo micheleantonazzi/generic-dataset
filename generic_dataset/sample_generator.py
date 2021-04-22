@@ -1,15 +1,17 @@
 import queue
 from abc import ABCMeta
 from functools import wraps
-from typing import Dict, Any, Union, Set, TypeVar, Callable
+from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
 import numpy as np
 from threading import Lock
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, FieldHasIncorrectTypeException
+from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, \
+    FieldHasIncorrectTypeException, FieldIsNotDatasetPart
 
 TCallable = TypeVar('TCallable', bound=Callable[..., Any])
 
+T = TypeVar('T')
 
 class FieldNameAlreadyExistsException(Exception):
     """
@@ -85,22 +87,20 @@ class SampleGenerator:
         self._name = name
         self._fields_name: Set[str] = set()
         self._fields_type: Dict[str, type] = {}
-        self._fields_dataset: Dict[str, bool] = {}
+        self._fields_dataset: Dict[str, Dict[str, Callable]] = {}
         self._custom_methods: Dict[str, Callable] = {}
 
-    def add_field(self, field_name: str, field_type: type, add_to_dataset: bool) -> 'SampleGenerator':
+    def add_field(self, field_name: str, field_type: type) -> 'SampleGenerator':
         """
-        Adds a field with the given name and type. The created field can be considered part of the dataset or not,
-        based on the value of add_to_dataset_field. If it is True, this field is saved and loaded from disk.
-        For each field, getters and setters are automatically created.
-        If field_type is numpy.ndarray, it is also added a method that creates a DataPipeline for this field.
+        Adds a field with the given name and type.
+        The field is not considered as part of the dataset: it is a simple instance property.
+        For each field, getter and setter methods are automatically created.
+        If field_type is "numpy.ndarray", it is also added a methods to create and get a DataPipeline to elaborate it.
         :raise FieldNameAlreadyExists: if the field name already exists
         :param field_name: the name of the field
         :type field_name: str
         :param field_type: the type of the field
         :type field_type: type
-        :param add_to_dataset: if True, the field will be saved and loaded form disk
-        :type add_to_dataset: bool
         :return: the SampleGenerator instance
         :rtype: SampleGenerator
         """
@@ -110,8 +110,32 @@ class SampleGenerator:
 
         self._fields_name.add(field_name)
         self._fields_type[field_name] = field_type
-        self._fields_dataset[field_name] = add_to_dataset
 
+        return self
+
+    def add_dataset_field(self, field_name: str, field_type: type, save_function: Callable[[str, T], NoReturn], load_function: Callable[[str], T]) -> 'SampleGenerator':
+        """
+        Adds a field with the given name and type. The field is considered a part of the dataset,
+        so it is saved and load from disk by DatasetDiskManager.
+        For each field, getter and setter methods are automatically created.
+        If field_type is "numpy.ndarray", it is also added a methods to create and get a DataPipeline to elaborate it.
+        For a dataset field, it is mandatory to set up the functions to save and load it to disk.
+        The save function must have the signature: save_function(path:str, data: data_type) -> NoReturn: ...
+        The load function, instead, must be like this: load_function(path: str) -> data_type: ...
+        :raise FieldNameAlreadyExists: if the field name already exists
+        :param field_name: the name of the field
+        :type field_name: str
+        :param field_type: the type of the field
+        :type field_type: type
+        :param save_function: the function to save the field to disk
+        :type save_function: Callable
+        :param load_function: the function to load the field from disk
+        :type load_function: Callable
+        :return: the SampleGenerator instance
+        :rtype: SampleGenerator
+        """
+        self.add_field(field_name=field_name, field_type=field_type)
+        self._fields_dataset[field_name] = {'save_function': save_function, 'load_function': load_function}
         return self
 
     def add_custom_pipeline(self, method_name: str, elaborated_field: str, final_field: str, pipeline: DataPipeline) -> 'SampleGenerator':
@@ -191,11 +215,15 @@ class SampleGenerator:
                 for method_name, func in self._custom_methods.items():
                     class_dict[method_name] = func
 
+                # Methods for saving and loading fields
+                class_dict['save_field'] = self._create_save_generic_field()
+                class_dict['load_field'] = self._create_load_generic_field()
+
                 return ABCMeta.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
             def get_dataset_fields(sample) -> Set[str]:
-                return {field_name for field_name in self._fields_dataset.keys() if self._fields_dataset[field_name]}
+                return sample._fields_dataset.keys()
 
         GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
 
@@ -211,6 +239,7 @@ class SampleGenerator:
             # The fields with a pipeline must be numpy.ndarray
             sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
             sample._locks: Dict[str, Lock] = {field_name: Lock() for field_name in sample._fields_name}
+            sample._fields_dataset = self._fields_dataset.copy()
 
         return __init__
 
@@ -267,7 +296,7 @@ class SampleGenerator:
             The pipeline is correctly configured, the data to elaborate are "{1}"
             and the pipeline results is set to "{2}".
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
-            :raises AnotherActivePipelineException: if other pipeline of the fields are active
+            :raise AnotherActivePipelineException: if other pipeline of the fields are active
             :return: a new pipeline instance which elaborates "{3}" and writes the result into "{4}"
             :rtype: DataPipeline
             """
@@ -288,6 +317,70 @@ class SampleGenerator:
             return pipeline_configured
 
         f.__doc__ = f.__doc__.format(elaborated_field, elaborated_field, final_field, elaborated_field, final_field)
+        return f
+
+    def _create_save_generic_field(self):
+        class_name = self._name
+
+        def f(sample, field_name: str, path: str) -> class_name:
+            """
+            Saves the given field to disk, in the given path.
+            :raise FieldDoesNotExistException: if field_name do not exist in this sample class
+            :raise FieldIsNotDatasetPart: if the field is not a part of dataset
+            :raise AnotherActivePipelineException if there is an active pipeline for this field
+            :raise FileNotFoundError: if the path does not exist
+            :param field_name: the name of the field to save
+            :type field_name: str
+            :param path: the path where save the field value
+            :type path: str
+            :return: the sample instance
+            """
+            if field_name not in sample._fields_name:
+                raise FieldDoesNotExistException(field_name=field_name)
+
+            if field_name not in sample._fields_dataset.keys():
+                raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
+
+            @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+            def wrapped_save_function(sample):
+                sample._fields_dataset[field_name]['save_function'](path, sample._fields_value[field_name])
+
+            wrapped_save_function(sample)
+            return sample
+
+        return f
+
+    def _create_load_generic_field(self):
+        class_name = self._name
+
+        def f(sample, field_name: str, path: str) -> class_name:
+            """
+            Loads the given field from disk, saved in the given path.
+            The field value is not returned by this method but it is set to the sample class.
+            To retrieve it use the correspondent get method.
+            :raise FieldDoesNotExistException: if field_name do not exist in this sample class
+            :raise FieldIsNotDatasetPart: if the field is not a part of dataset
+            :raise AnotherActivePipelineException if there is an active pipeline for this field
+            :raise FileNotFoundError: if the path does not exist
+            :param field_name: the name of the field to save
+            :type field_name: str
+            :param path: the path where loading the field value
+            :type path: str
+            :return: the sample instance
+            """
+            if field_name not in sample._fields_name:
+                raise FieldDoesNotExistException(field_name=field_name)
+
+            if field_name not in sample._fields_dataset.keys():
+                raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
+
+            @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+            def wrapped_load_function(sample):
+                sample._fields_value[field_name] = sample._fields_dataset[field_name]['load_function'](path)
+
+            wrapped_load_function(sample)
+            return sample
+
         return f
 
     def _create_get_pipeline(self, field_name: str):
