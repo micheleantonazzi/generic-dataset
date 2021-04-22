@@ -1,5 +1,7 @@
 import os
+import threading
 from abc import ABCMeta
+from typing import NoReturn, Union
 
 from generic_dataset.generic_sample import GenericSample
 
@@ -56,26 +58,81 @@ class DatasetDiskManager:
         self._set_up_folders()
 
         self._negative_count, self._positive_count = self._count_samples()
+        self._lock = threading.Lock()
 
     def get_negative_samples_count(self) -> int:
+        """
+        Returns the number of negative samples in the current folder.
+        :return: the number of negative samples.
+        :rtype: int
+        """
         return self._negative_count
 
     def get_positive_samples_count(self) -> int:
+        """
+        Returns the number of positive samples in the current folder.
+        :return: the number of positive samples.
+        :rtype: int
+        """
         return self._positive_count
+
+    def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[NoReturn, threading.Thread]:
+        """
+        Saves to disk the given sample.
+        :param sample: the sample to save
+        :param use_thread: if True, this method saves files in a separate thread
+        :return: it use_thread is True, returns the thread in which the fields are saved, returns None otherwise
+        """
+        if not isinstance(sample, type(self._sample)):
+            raise TypeError('The sample type is wrong!')
+
+        with self._lock:
+            if sample.is_positive():
+                count = self._positive_count
+                folder_pos_neg = DatasetDiskManager._POSITIVE_DATA_FOLDER
+                self._positive_count += 1
+            else:
+                count = self._negative_count
+                folder_pos_neg = DatasetDiskManager._NEGATIVE_DATA_FOLDER
+                self._negative_count += 1
+
+            positive_count = self._positive_count
+            negative_count = self._negative_count
+
+        def save_all_fields():
+            path = os.path.join(self._dataset_path, self._folder_name, folder_pos_neg)
+            for field in sample.get_dataset_fields():
+                file_name = 'positive_' if sample.is_positive() else 'negative_'
+                file_name += field + '_' + str(positive_count + negative_count) + '_('
+                file_name = file_name + str(count)
+                file_name += ')'
+                sample.save_field(field_name=field, path=os.path.join(path, field, file_name))
+
+        if use_thread:
+            thread = threading.Thread(target=save_all_fields)
+            thread.start()
+            return thread
+        else:
+            save_all_fields()
 
     def _count_samples(self):
         field = list(self._sample.get_dataset_fields())[0]
-        negative_bgr_path = os.path.join(self._dataset_path, self._folder_name, DatasetDiskManager._NEGATIVE_DATA_FOLDER, field)
+        negative_bgr_path = os.path.join(self._dataset_path, self._folder_name,
+                                         DatasetDiskManager._NEGATIVE_DATA_FOLDER, field)
 
-        count_negatives = len([name for name in os.listdir(negative_bgr_path) if os.path.isfile(os.path.join(negative_bgr_path, name))])
+        count_negatives = len(
+            [name for name in os.listdir(negative_bgr_path) if os.path.isfile(os.path.join(negative_bgr_path, name))])
 
-        positive_bgr_path = os.path.join(self._dataset_path, self._folder_name, DatasetDiskManager._POSITIVE_DATA_FOLDER, field)
-        count_positives = len([name for name in os.listdir(positive_bgr_path) if os.path.isfile(os.path.join(positive_bgr_path, name))])
+        positive_bgr_path = os.path.join(self._dataset_path, self._folder_name,
+                                         DatasetDiskManager._POSITIVE_DATA_FOLDER, field)
+        count_positives = len(
+            [name for name in os.listdir(positive_bgr_path) if os.path.isfile(os.path.join(positive_bgr_path, name))])
         return count_negatives, count_positives
 
     def _set_up_folders(self):
         if not os.path.exists(os.path.dirname(self._dataset_path)):
-            raise FileNotFoundError('The dataset path does not exists! \n The wrong path is ' + os.path.dirname(self._dataset_path))
+            raise FileNotFoundError(
+                'The dataset path does not exists! \n The wrong path is ' + os.path.dirname(self._dataset_path))
 
         if not os.path.exists(self._dataset_path):
             os.mkdir(self._dataset_path)
