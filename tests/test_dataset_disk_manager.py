@@ -25,3 +25,11 @@ def test_constructor():
     DatasetDiskManager(dataset_path=path, folder_name='folder', sample=GeneratedSample(is_positive=False))
     DatasetDiskManager(dataset_path=path, folder_name='folder1', sample=GeneratedSample(is_positive=False))
     DatasetDiskManager(dataset_path=path, folder_name='folder1', sample=GeneratedSample(is_positive=False))
+
+
+def test_count_samples():
+    path = os.path.join(os.path.dirname(__file__), 'dataset_folder')
+    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample=GeneratedSample(is_positive=False))
+
+    assert dataset.get_negative_samples_count() == 0
+    assert dataset.get_positive_samples_count() == 0
