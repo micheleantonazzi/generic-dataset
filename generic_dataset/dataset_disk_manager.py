@@ -41,7 +41,7 @@ class DatasetDiskManager:
     _POSITIVE_DATA_FOLDER = 'positive_samples'
     _NEGATIVE_DATA_FOLDER = 'negative_samples'
 
-    def __init__(self, dataset_path: str, folder_name: str, sample: GenericSample):
+    def __init__(self, dataset_path: str, folder_name: str, sample_class: type(GenericSample)):
         """
         Instantiates a new instance of DatasetDiskManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
@@ -51,10 +51,11 @@ class DatasetDiskManager:
         :param folder_name: the folder name
         :type folder_name: str
         :param sample_class: the sample class to save and load from disk
+        :type sample_class: type
         """
         self._dataset_path = dataset_path
         self._folder_name = folder_name
-        self._sample = sample
+        self._sample_class = sample_class
 
         self._set_up_folders()
         self._lock = threading.Lock()
@@ -139,7 +140,7 @@ class DatasetDiskManager:
         :param use_thread: if True, this method saves files in a separate thread
         :return: it use_thread is True, returns the thread in which the fields are saved, returns None otherwise
         """
-        if not isinstance(sample, type(self._sample)):
+        if not isinstance(sample, self._sample_class):
             raise TypeError('The sample type is wrong!')
 
         with self._lock:
@@ -179,12 +180,27 @@ class DatasetDiskManager:
         :type absolute_count: int
         :param use_thread: if True, the loading procedure is executed in a separate thread
         :type use_thread: bool
-        :return: the loaded sample
+        :return: the loaded sample if the use_thread is False. otherwise the thread where the loading operation is performed
         """
-        pass
+        with self._lock:
+            sample_information = self._absolute_samples_information[absolute_count]
+
+            fold = DatasetDiskManager._POSITIVE_DATA_FOLDER if sample_information[0] else DatasetDiskManager._NEGATIVE_DATA_FOLDER
+
+        sample = self._sample_class(is_positive=sample_information[0])
+
+        path = os.path.join(self._dataset_path, self._folder_name, fold)
+        for field in sample.get_dataset_fields():
+            file_name = 'positive_' if sample_information[0] else 'negative_'
+            file_name += field + '_' + str(sample_information[1]) + '_('
+            file_name = file_name + str(absolute_count)
+            file_name += ')'
+            sample.load_field(field_name=field, path=os.path.join(path, field, file_name))
+
+        return sample
 
     def _get_positives_negative_names(self):
-        field = list(self._sample.get_dataset_fields())[0]
+        field = list(self._sample_class(is_positive=False).get_dataset_fields())[0]
         negative_path = os.path.join(self._dataset_path, self._folder_name,
                                          DatasetDiskManager._NEGATIVE_DATA_FOLDER, field)
 
@@ -216,7 +232,7 @@ class DatasetDiskManager:
         if not os.path.exists(negative_samples_path):
             os.mkdir(negative_samples_path)
 
-        dataset_fields = self._sample.get_dataset_fields()
+        dataset_fields = self._sample_class(is_positive=False).get_dataset_fields()
         for folder in [positive_samples_path, negative_samples_path]:
             for field in dataset_fields:
                 field_path = os.path.join(folder, field)
