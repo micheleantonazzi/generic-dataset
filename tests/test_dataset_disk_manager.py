@@ -77,12 +77,22 @@ def test_sample_information():
 def test_load_sample():
     dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample_class=GeneratedSample)
     thread = False
+
     for i in range(len(dataset.get_absolute_samples_information())):
         thread = not thread
         sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=thread)
         if thread:
-            sample = sample.result()
+            sample: GeneratedSample = sample.result()
         assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
+    order = [(False, 0), (True, 0), (False, 1), (True, 1)]
+    for i, (is_positive, count) in zip(range(len(order)), order):
+        thread = not thread
+        sample = dataset.load_sample_using_relative_count(is_positive=is_positive, relative_count=count, use_thread=thread)
+        if thread:
+            sample: GeneratedSample = sample.result()
+
+        assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
+        assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
