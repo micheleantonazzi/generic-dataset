@@ -60,3 +60,16 @@ def test_save_fields():
 
     assert dataset.get_negative_samples_count() == 2
     assert dataset.get_positive_samples_count() == 2
+
+    assert dataset.get_negative_samples_information() == [(0,), (2,)]
+    assert dataset.get_positive_samples_information() == [(1,), (3,)]
+    assert dataset.get_absolute_samples_information() == [(False, 0), (True, 0), (False, 1), (True, 1)]
+
+
+def test_sample_information():
+    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample=GeneratedSample(is_positive=False))
+
+    assert dataset.get_negative_samples_information() == [(0,), (2,)]
+    assert dataset.get_positive_samples_information() == [(1,), (3,)]
+    assert dataset.get_absolute_samples_information() == [(False, 0), (True, 0), (False, 1), (True, 1)]
+
