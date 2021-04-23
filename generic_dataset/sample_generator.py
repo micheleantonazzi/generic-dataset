@@ -214,6 +214,7 @@ class SampleGenerator:
             sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
             sample._locks: Dict[str, RLock] = {field_name: RLock() for field_name in sample._fields_name}
             sample._fields_dataset = self._fields_dataset.copy()
+            sample._acquire_lock = RLock()
 
         return __init__
 

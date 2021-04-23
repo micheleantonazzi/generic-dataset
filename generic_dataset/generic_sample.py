@@ -44,7 +44,8 @@ def synchronize_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callab
         def sync_method(self, *args, **kwargs):
             locks = [self._locks[field_name] for field_name in fields_name]
             try:
-                [lock.acquire() for lock in locks]
+                with self._acquire_lock:
+                    [lock.acquire() for lock in locks]
                 if check_pipeline:
                     for field_name in fields_name:
                         if field_name in self._pipelines.keys() and self._pipelines[field_name] is not None:
