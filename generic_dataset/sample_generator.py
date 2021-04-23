@@ -2,7 +2,7 @@ import queue
 from abc import ABCMeta
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
 import numpy as np
-from threading import Lock
+from threading import Lock, RLock
 
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.generic_sample import GenericSample, \
@@ -212,7 +212,7 @@ class SampleGenerator:
             sample._fields_value['is_positive'] = is_positive
             # The fields with a pipeline must be numpy.ndarray
             sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
-            sample._locks: Dict[str, Lock] = {field_name: Lock() for field_name in sample._fields_name}
+            sample._locks: Dict[str, RLock] = {field_name: RLock() for field_name in sample._fields_name}
             sample._fields_dataset = self._fields_dataset.copy()
 
         return __init__
