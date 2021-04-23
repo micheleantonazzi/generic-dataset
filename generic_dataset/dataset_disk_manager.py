@@ -2,7 +2,9 @@ import os
 import re
 import threading
 from abc import ABCMeta
+from concurrent.futures._base import Future
 from typing import NoReturn, Union, Type, List, Tuple
+from concurrent.futures import ThreadPoolExecutor
 
 from generic_dataset.generic_sample import GenericSample
 
@@ -59,6 +61,7 @@ class DatasetDiskManager:
 
         self._set_up_folders()
         self._lock = threading.Lock()
+        self._pool = ThreadPoolExecutor(max_workers=8)
 
         negative_names, positive_names = self._get_positives_negative_names()
 
@@ -132,13 +135,13 @@ class DatasetDiskManager:
         with self._lock:
             return self._absolute_samples_information.copy()
 
-    def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[NoReturn, threading.Thread]:
+    def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[NoReturn, Future]:
         """
         Saves to disk the given sample.
         :raise TypeError: if the sample has a wrong type
         :param sample: the sample to save
         :param use_thread: if True, this method saves files in a separate thread
-        :return: it use_thread is True, returns the thread in which the fields are saved, returns None otherwise
+        :return: it use_thread is True, returns the future in which the fields are saved, returns None otherwise
         """
         if not isinstance(sample, self._sample_class):
             raise TypeError('The sample type is wrong!')
@@ -167,37 +170,41 @@ class DatasetDiskManager:
                 sample.save_field(field_name=field, path=os.path.join(path, field, file_name))
 
         if use_thread:
-            thread = threading.Thread(target=save_all_fields)
-            thread.start()
-            return thread
+            return self._pool.submit(save_all_fields)
         else:
             save_all_fields()
 
-    def load_sample_using_absolute_count(self, absolute_count: int, use_thread: bool) -> GenericSample:
+    def load_sample_using_absolute_count(self, absolute_count: int, use_thread: bool) -> Union[GenericSample, Future]:
         """
         Loads the sample with the given absolute count. The loaded sample can be positive or negative.
         :param absolute_count: the sample absolute count
         :type absolute_count: int
         :param use_thread: if True, the loading procedure is executed in a separate thread
         :type use_thread: bool
-        :return: the loaded sample if the use_thread is False. otherwise the thread where the loading operation is performed
+        :return: the loaded sample if the use_thread is False, otherwise the Future where the loading operation is performed
         """
         with self._lock:
             sample_information = self._absolute_samples_information[absolute_count]
 
             fold = DatasetDiskManager._POSITIVE_DATA_FOLDER if sample_information[0] else DatasetDiskManager._NEGATIVE_DATA_FOLDER
 
-        sample = self._sample_class(is_positive=sample_information[0])
+        def load_all_fields() -> GenericSample:
+            sample = self._sample_class(is_positive=sample_information[0])
+            path = os.path.join(self._dataset_path, self._folder_name, fold)
 
-        path = os.path.join(self._dataset_path, self._folder_name, fold)
-        for field in sample.get_dataset_fields():
-            file_name = 'positive_' if sample_information[0] else 'negative_'
-            file_name += field + '_' + str(sample_information[1]) + '_('
-            file_name = file_name + str(absolute_count)
-            file_name += ')'
-            sample.load_field(field_name=field, path=os.path.join(path, field, file_name))
+            for field in sample.get_dataset_fields():
+                file_name = 'positive_' if sample_information[0] else 'negative_'
+                file_name += field + '_' + str(sample_information[1]) + '_('
+                file_name = file_name + str(absolute_count)
+                file_name += ')'
+                sample.load_field(field_name=field, path=os.path.join(path, field, file_name))
 
-        return sample
+            return sample
+
+        if use_thread:
+            return self._pool.submit(load_all_fields)
+        else:
+            return load_all_fields()
 
     def _get_positives_negative_names(self):
         field = list(self._sample_class(is_positive=False).get_dataset_fields())[0]

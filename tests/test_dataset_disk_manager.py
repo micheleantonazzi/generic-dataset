@@ -50,13 +50,13 @@ def test_save_fields():
     dataset.save_sample(sample, False)
 
     sample = GeneratedSample(is_positive=True).set_field_1(np.array([1.1 for _ in range(10000)])).set_field_2(np.array([1.2 for _ in range(10000)]))
-    dataset.save_sample(sample, True)
+    dataset.save_sample(sample, True).result()
 
     sample = GeneratedSample(is_positive=False).set_field_1(np.array([2.1 for _ in range(10000)])).set_field_2(np.array([2.2 for _ in range(10000)]))
-    dataset.save_sample(sample, True)
+    dataset.save_sample(sample, True).result()
 
     sample = GeneratedSample(is_positive=True).set_field_1(np.array([3.1 for _ in range(10000)])).set_field_2(np.array([3.2 for _ in range(10000)]))
-    dataset.save_sample(sample, True)
+    dataset.save_sample(sample, True).result()
 
     assert dataset.get_negative_samples_count() == 2
     assert dataset.get_positive_samples_count() == 2
@@ -76,9 +76,12 @@ def test_sample_information():
 
 def test_load_sample():
     dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample_class=GeneratedSample)
-
+    thread = False
     for i in range(len(dataset.get_absolute_samples_information())):
-        sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=False)
+        thread = not thread
+        sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=thread)
+        if thread:
+            sample = sample.result()
         assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
