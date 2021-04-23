@@ -1,17 +1,15 @@
 import queue
 from abc import ABCMeta
-from functools import wraps
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
 import numpy as np
 from threading import Lock
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, \
-    FieldHasIncorrectTypeException, FieldIsNotDatasetPart
-
-TCallable = TypeVar('TCallable', bound=Callable[..., Any])
+from generic_dataset.generic_sample import GenericSample, \
+    FieldHasIncorrectTypeException, FieldIsNotDatasetPart, synchronize_on_fields
 
 T = TypeVar('T')
+
 
 class FieldNameAlreadyExistsException(Exception):
     """
@@ -37,35 +35,6 @@ class MethodAlreadyExistsException(Exception):
         super(MethodAlreadyExistsException, self).__init__('A method called {0} already exists: you cannot add a new one!!'.format(method_name))
 
 
-def synchronize_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
-    """
-    This decorator synchronizes class methods with the fields they use.
-    All methods that use the same fields are synchronized with respect to the same locks.
-    In Addition, it can check also the field's pipeline and eventually raises an exception if there exists an active one.
-    :raises AnotherActivePipelineException: if check_pipeline parameter is True and there is an active pipeline for the given field
-    :param fields_name: the Set containing the fields name ot synchronize
-    :param check_pipeline: if True, the field's pipeline is checked and an exception is raised is there is an active pipeline.
-    :return: Callable
-    """
-    def decorator(method: TCallable) -> TCallable:
-        @wraps(method)
-        def sync_method(sample, *args, **kwargs):
-            locks = [sample._locks[field_name] for field_name in fields_name]
-            try:
-                [lock.acquire() for lock in locks]
-                if check_pipeline:
-                    for field_name in fields_name:
-                        if field_name in sample._pipelines.keys() and sample._pipelines[field_name] is not None:
-                            raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
-
-                return method(sample, *args, **kwargs)
-            finally:
-                [lock.release() for lock in locks]
-
-        return sync_method
-    return decorator
-
-
 class SampleGenerator:
     """
     This object generates customized Sample class according to the needs of the programmer.
@@ -76,7 +45,8 @@ class SampleGenerator:
     - get_{field_name}: getter
     - set_{field_name}: setter
     - create_pipeline_for_{field_name}: returns a DataPipeline to elaborate the correspondent field
-    - get_{field_name}_pipeline: returns the pipeline instance for the specified field
+    - get_{field_name}_pipeline: returns the pipeline instance for the specified field.
+    "is_positive" is a default field and it is added automatically to the generated sample class: this field must also be passes to the constructor.
     In addition, other methods can be created and associated to a precise property.
     For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
     specified by the programmer.
@@ -85,8 +55,8 @@ class SampleGenerator:
     """
     def __init__(self, name: str):
         self._name = name
-        self._fields_name: Set[str] = set()
-        self._fields_type: Dict[str, type] = {}
+        self._fields_name: Set[str] = {'is_positive'}
+        self._fields_type: Dict[str, type] = {'is_positive': bool}
         self._fields_dataset: Dict[str, Dict[str, Callable]] = {}
         self._custom_methods: Dict[str, Callable] = {}
 
@@ -234,11 +204,12 @@ class SampleGenerator:
 
     def _create_constructor(self):
         def __init__(sample, is_positive: bool):
-            super(type(sample), sample).__init__(is_positive)
+            super(type(sample), sample).__init__()
 
             sample._fields_name: Set[str] = self._fields_name.copy()
             sample._fields_type: Dict[str, type] = self._fields_type.copy()
             sample._fields_value: Dict[str, Any] = {field_name: None for field_name in sample._fields_name}
+            sample._fields_value['is_positive'] = is_positive
             # The fields with a pipeline must be numpy.ndarray
             sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
             sample._locks: Dict[str, Lock] = {field_name: Lock() for field_name in sample._fields_name}

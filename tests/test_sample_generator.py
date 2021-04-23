@@ -22,8 +22,8 @@ def test_generate_sample_class():
 
     assert isinstance(GeneratedClass, type)
     assert isinstance(GeneratedClass(is_positive=False), GenericSample)
-    assert not GeneratedClass(is_positive=False).is_positive()
-    assert GeneratedClass(is_positive=False).set_is_positive(True).is_positive()
+    assert not GeneratedClass(is_positive=False).get_is_positive()
+    assert GeneratedClass(is_positive=False).set_is_positive(True).get_is_positive()
 
 
 def test_fields_setter_getter():
@@ -151,4 +151,4 @@ def test_custom_method():
     generated.set_is_positive(True)
     generated.custom_method(2)
 
-    assert not generated.is_positive()
+    assert not generated.get_is_positive()
