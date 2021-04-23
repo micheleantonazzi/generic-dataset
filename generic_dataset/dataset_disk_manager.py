@@ -220,22 +220,23 @@ class DatasetDiskManager:
             return function()
 
     def _save_or_load_sample(self, sample: GenericSample, save_or_load: str, absolute_count, relative_count):
-        fold = DatasetDiskManager._POSITIVE_DATA_FOLDER if sample.get_is_positive() else DatasetDiskManager._NEGATIVE_DATA_FOLDER
 
         def f():
-            path = os.path.join(self._dataset_path, self._folder_name, fold)
+            with sample as sample_locked:
+                fold = DatasetDiskManager._POSITIVE_DATA_FOLDER if sample_locked.get_is_positive() else DatasetDiskManager._NEGATIVE_DATA_FOLDER
+                path = os.path.join(self._dataset_path, self._folder_name, fold)
 
-            for field in sample.get_dataset_fields():
-                file_name = 'positive_' if sample.get_is_positive() else 'negative_'
-                file_name += field + '_' + str(relative_count) + '_('
-                file_name = file_name + str(absolute_count)
-                file_name += ')'
+                for field in sample_locked.get_dataset_fields():
+                    file_name = 'positive_' if sample_locked.get_is_positive() else 'negative_'
+                    file_name += field + '_' + str(relative_count) + '_('
+                    file_name = file_name + str(absolute_count)
+                    file_name += ')'
 
-                final_path = os.path.join(path, field, file_name)
-                if save_or_load == 'save':
-                    sample.save_field(field_name=field, path=final_path)
-                elif save_or_load == 'load':
-                    sample.load_field(field_name=field, path=final_path)
+                    final_path = os.path.join(path, field, file_name)
+                    if save_or_load == 'save':
+                        sample_locked.save_field(field_name=field, path=final_path)
+                    elif save_or_load == 'load':
+                        sample_locked.load_field(field_name=field, path=final_path)
 
             return sample
 

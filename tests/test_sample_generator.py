@@ -4,8 +4,7 @@ import pytest
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.generic_sample import GenericSample, AnotherActivePipelineException, FieldHasIncorrectTypeException
 from generic_dataset.sample_generator import SampleGenerator, FieldNameAlreadyExistsException, \
-    FieldDoesNotExistException, \
-    MethodAlreadyExistsException, synchronize_on_fields
+    FieldDoesNotExistException, MethodAlreadyExistsException, synchronize_on_fields
 
 
 def test_add_field():
@@ -97,8 +96,7 @@ def test_custom_pipeline(use_gpu: bool = False):
         SampleGenerator('Sample').add_field(field_name='field', field_type=int).add_field('field2', np.ndarray) \
             .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline())
 
-    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2',
-                                                                                                              np.ndarray) \
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
         .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline().add_operation(
         operation=lambda data, engine: (engine.asarray([2]), engine))) \
         .generate_sample_class()
@@ -152,3 +150,17 @@ def test_custom_method():
     generated.custom_method(2)
 
     assert not generated.get_is_positive()
+
+
+def test_acquire_all_locks():
+    GeneratedClass = SampleGenerator('Sample').add_field(field_name='field', field_type=np.ndarray).add_field('field2', np.ndarray) \
+        .add_custom_pipeline('m', elaborated_field='field', final_field='field2', pipeline=DataPipeline().add_operation(
+        operation=lambda data, engine: (engine.asarray([2]), engine))) \
+        .generate_sample_class()
+
+    generated = GeneratedClass(is_positive=False)
+    generated.acquire_all_locks()
+    generated.release_all_locks()
+
+    with generated as gen_acquired_all_locks:
+        gen_acquired_all_locks.create_pipeline_for_field()

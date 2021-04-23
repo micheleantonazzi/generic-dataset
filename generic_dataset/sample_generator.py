@@ -2,7 +2,7 @@ import queue
 from abc import ABCMeta
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
 import numpy as np
-from threading import Lock, RLock
+from threading import RLock
 
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.generic_sample import GenericSample, \
@@ -50,8 +50,15 @@ class SampleGenerator:
     In addition, other methods can be created and associated to a precise property.
     For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
     specified by the programmer.
-    The final generated sample class is thread safe, in the sense that every methods associated to the same field are synchronized.
-    This means that two different threads cannot simultaneously execute two methods associated with the same field.
+    The final generated sample class is thread safe: a lock is associated to each filed
+    and all the automatic generated methods must acquire all lock related to all fields they use.
+    This means that two different threads cannot simultaneously execute two methods that use the same fields.
+    Keep in mind that only automatically created method are thread safe, unlike the custom methods added by the programmer.
+    To avoid this issue, the user can decorate the custom functions using the synchronized_on_field decorator before passing them to the "add_custom_method" function.
+    Sometimes it could be necessary block a sample instance to execute a series of actions as a atomic operation.
+    To this, the sample generated class offers two methods to acquire and release all locks associated to all fields (like saving and loading sample from disk).
+    In addition, it is possible to use the sample generated class with a context manager (with statement):
+    in this case all locks are acquired and then released.
     """
     def __init__(self, name: str):
         self._name = name
@@ -163,7 +170,7 @@ class SampleGenerator:
         self._custom_methods[method_name] = function
         return self
 
-    def generate_sample_class(self) -> 'GeneratedSampleClass':
+    def generate_sample_class(self) -> 'GeneratedGSampleClass':
         """
         Generates the sample class.
         :return: the sample class definition
@@ -189,6 +196,10 @@ class SampleGenerator:
                 class_dict['save_field'] = self._create_save_generic_field()
                 class_dict['load_field'] = self._create_load_generic_field()
 
+                # Methods for acquiring and releasing all locks
+                class_dict['release_all_locks'], class_dict['acquire_all_locks'] = self._create_acquire_all_lock_functions()
+                class_dict['__exit__'], class_dict['__enter__'] = self._create_enter_exit_function()
+
                 return ABCMeta.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
@@ -199,6 +210,8 @@ class SampleGenerator:
         GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
         GeneratedSampleClass.save_field.__doc__ = GenericSample.save_field.__doc__
         GeneratedSampleClass.load_field.__doc__ = GenericSample.load_field.__doc__
+        GeneratedSampleClass.acquire_all_locks.__doc__ = GenericSample.acquire_all_locks.__doc__
+        GeneratedSampleClass.release_all_locks.__doc__ = GenericSample.release_all_locks.__doc__
 
         return GeneratedSampleClass
 
@@ -276,7 +289,8 @@ class SampleGenerator:
             :rtype: DataPipeline
             """
             def assign(data: np.ndarray) -> np.ndarray:
-                [sample._locks[field].acquire() for field in fields]
+                with sample._acquire_lock:
+                    [sample._locks[field].acquire() for field in fields]
                 sample._fields_value[final_field] = data
                 for field in fields:
                     sample._pipelines[field] = None
@@ -345,3 +359,27 @@ class SampleGenerator:
 
         f.__doc__ = f.__doc__.format(field_name)
         return f
+
+    def _create_acquire_all_lock_functions(self):
+        class_name = self._name
+        def acquire_locks(sample) -> class_name:
+            with sample._acquire_lock:
+                [lock.acquire() for lock in sample._locks.values()]
+            return sample
+
+        def release_locks(sample) -> class_name:
+            [lock.release() for lock in sample._locks.values()]
+            return sample
+
+        return release_locks, acquire_locks
+
+    def _create_enter_exit_function(self):
+        class_name = self._name
+
+        def __enter__(sample) -> class_name:
+            return sample.acquire_all_locks()
+
+        def __exit__(sample, exc_type, exc_value, exc_traceback):
+            sample.release_all_locks()
+
+        return __exit__, __enter__

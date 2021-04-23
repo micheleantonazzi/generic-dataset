@@ -116,3 +116,19 @@ class GenericSample(metaclass=ABCMeta):
         :return: the sample instance
         """
         pass
+
+    @abstractmethod
+    def acquire_all_locks(self) -> 'GenericSample':
+        """
+        Acquires all locks related to all fields of the sample instance
+        :return: GenericSample instance
+        """
+        pass
+
+    @abstractmethod
+    def release_all_locks(self) -> 'GenericSample':
+        """
+        Releases all locks related to all fields of the sample instance
+        :return: GenericSample instance
+        """
+        pass
