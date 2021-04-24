@@ -1,3 +1,4 @@
+import os
 import queue
 from abc import ABCMeta
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
@@ -311,16 +312,19 @@ class SampleGenerator:
     def _create_save_generic_field(self):
         class_name = self._name
 
-        def f(sample, field_name: str, path: str) -> class_name:
+        def f(sample, field_name: str, path: str, file_name: str) -> class_name:
             if field_name not in sample._fields_name:
                 raise FieldDoesNotExistException(field_name=field_name)
 
             if field_name not in sample._fields_dataset.keys():
                 raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
 
+            if path == '' or not os.path.exists(path):
+                raise FileNotFoundError('Unable to save the file, the path does not exist!')
+
             @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
             def wrapped_save_function(sample):
-                sample._fields_dataset[field_name]['save_function'](path, sample._fields_value[field_name])
+                sample._fields_dataset[field_name]['save_function'](os.path.join(path, file_name), sample._fields_value[field_name])
 
             wrapped_save_function(sample)
             return sample
@@ -330,16 +334,19 @@ class SampleGenerator:
     def _create_load_generic_field(self):
         class_name = self._name
 
-        def f(sample, field_name: str, path: str) -> class_name:
+        def f(sample, field_name: str, path: str, file_name: str) -> class_name:
             if field_name not in sample._fields_name:
                 raise FieldDoesNotExistException(field_name=field_name)
 
             if field_name not in sample._fields_dataset.keys():
                 raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
 
+            if path == '' or not os.path.exists(path):
+                raise FileNotFoundError('Unable to load the file, the path does not exist!')
+
             @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
             def wrapped_load_function(sample):
-                sample._fields_value[field_name] = sample._fields_dataset[field_name]['load_function'](path)
+                sample._fields_value[field_name] = sample._fields_dataset[field_name]['load_function'](os.path.join(path, file_name))
 
             wrapped_load_function(sample)
             return sample

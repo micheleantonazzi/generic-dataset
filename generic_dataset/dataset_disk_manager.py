@@ -65,7 +65,7 @@ class DatasetDiskManager:
 
         negative_names, positive_names = self._get_positives_negative_names()
 
-        file_name_regexp = r'^(positive|negative)_(.+)_(\d+)_\((\d+)\)$'
+        file_name_regexp = r'^(positive|negative)_(.+)_(\d+)_\((\d+)\).(.*)$'
         # list[i] contains the information of the positive and negative samples,
         # ordered by relative count in sample's category (positive or negative).
         # The information consist in a tuple, where tuple[i] is the absolute count of the sample
@@ -232,11 +232,10 @@ class DatasetDiskManager:
                     file_name = file_name + str(absolute_count)
                     file_name += ')'
 
-                    final_path = os.path.join(path, field, file_name)
                     if save_or_load == 'save':
-                        sample_locked.save_field(field_name=field, path=final_path)
+                        sample_locked.save_field(field_name=field, path=os.path.join(path, field), file_name=file_name)
                     elif save_or_load == 'load':
-                        sample_locked.load_field(field_name=field, path=final_path)
+                        sample_locked.load_field(field_name=field, path=os.path.join(path, field), file_name=file_name)
 
             return sample
 

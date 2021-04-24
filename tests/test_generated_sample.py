@@ -120,45 +120,49 @@ def test_get_dataset_fields(use_gpu: bool = False):
     assert 'field_2' in dataset_fields
     assert not 'field_3' in dataset_fields
 
+
 def test_save_load_generic_field(use_gpu = False):
     generated = GeneratedSample(is_positive=False).set_field_1(np.array([1]))
 
     with pytest.raises(FieldDoesNotExistException):
-        generated.save_field(field_name='field', path='')
+        generated.save_field(field_name='field', path='', file_name='')
 
     with pytest.raises(FieldIsNotDatasetPart):
-        generated.save_field(field_name='field_3', path='')
+        generated.save_field(field_name='field_3', path='', file_name='')
 
     with pytest.raises(FileNotFoundError):
-        generated.save_field(field_name='field_1', path='')
+        generated.save_field(field_name='field_1', path='wrong_path', file_name='field_1')
 
     generated.create_pipeline_for_field_1()
 
     with pytest.raises(AnotherActivePipelineException):
-        generated.save_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+        generated.save_field(field_name='field_1', path=test_save_load_path, file_name='field_1')
 
     generated.get_pipeline_field_1().run(use_gpu).get_data()
 
-    generated.save_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+    generated.save_field(field_name='field_1', path=test_save_load_path, file_name='field_1')
 
     # Load
     with pytest.raises(FieldDoesNotExistException):
-        generated.load_field(field_name='field', path='')
+        generated.load_field(field_name='field', path='', file_name='field_1')
 
     with pytest.raises(FieldIsNotDatasetPart):
-        generated.load_field(field_name='field_3', path='')
+        generated.load_field(field_name='field_3', path='', file_name='field_3')
 
     with pytest.raises(FileNotFoundError):
-        generated.load_field(field_name='field_1', path='')
+        generated.load_field(field_name='field_1', path='', file_name='field_1')
+
+    with pytest.raises(FileNotFoundError):
+        generated.load_field(field_name='field_1', path=test_save_load_path + 'a', file_name='field_')
 
     generated.create_pipeline_for_field_1()
 
     with pytest.raises(AnotherActivePipelineException):
-        generated.load_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+        generated.load_field(field_name='field_1', path=test_save_load_path, file_name='field_1')
 
     generated.get_pipeline_field_1().run(use_gpu).get_data()
 
     generated.set_field_1(np.array([2]))
-    generated.load_field(field_name='field_1', path=test_save_load_path + '/field_1.tar.gz')
+    generated.load_field(field_name='field_1', path=test_save_load_path, file_name='field_1')
 
     assert np.array_equal(generated.get_field_1(), np.array([1]))

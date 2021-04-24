@@ -84,7 +84,7 @@ class GenericSample(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def save_field(self, field_name: str, path: str) -> 'GenericSample':
+    def save_field(self, field_name: str, path: str, file_name: str) -> 'GenericSample':
         """
         Saves the given field to disk, in the given path.
         :raise FieldDoesNotExistException: if field_name do not exist in this sample class
@@ -95,12 +95,14 @@ class GenericSample(metaclass=ABCMeta):
         :type field_name: str
         :param path: the path where save the field value
         :type path: str
+        :param file_name: the name of the file in which to save the field. The file extension is automatically added by the save function, so don't include it in the name
+        :type file_name: str
         :returns the sample instance
         """
         pass
 
     @abstractmethod
-    def load_field(self, field_name: str, path: str) -> 'GenericSample':
+    def load_field(self, field_name: str, path: str, file_name: str) -> 'GenericSample':
         """
         Loads the given field from disk, saved in the given path.
         The field value is not returned by this method but it is set to the sample class.
@@ -113,6 +115,8 @@ class GenericSample(metaclass=ABCMeta):
         :type field_name: str
         :param path: the path where loading the field value
         :type path: str
+        :param file_name: the name of the file in which the field si saved. The file extension is automatically added by the load function, so don't include it in the name
+        :type file_name: str
         :return: the sample instance
         """
         pass
