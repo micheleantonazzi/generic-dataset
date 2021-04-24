@@ -82,7 +82,8 @@ setup(
         'opencv-python',
         'numpy',
         cuda_version,
-        'termcolor'
+        'termcolor',
+        'stub-generator'
     ],
     entry_points={
         'console_scripts': [
