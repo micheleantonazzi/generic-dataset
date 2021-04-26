@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from functools import wraps
-from threading import RLock
-from typing import Set, Any, Dict, TypeVar, Callable, List
+from typing import Set, Any, TypeVar, Callable
 
 
 class AnotherActivePipelineException(Exception):
@@ -29,25 +28,25 @@ class FieldIsNotDatasetPart(Exception):
 TCallable = TypeVar('TCallable', bound=Callable[..., Any])
 
 
-def synchronize_on_fields(fields_name: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
+def synchronize_on_fields(field_names: Set[str], check_pipeline: bool) -> Callable[[TCallable], TCallable]:
     """
     This decorator synchronizes class methods with the fields they use.
     All methods that use the same fields are synchronized with respect to the same locks.
     In Addition, it can check also the field's pipeline and eventually raises an exception if there exists an active one.
     :raises AnotherActivePipelineException: if check_pipeline parameter is True and there is an active pipeline for the given field
-    :param fields_name: the Set containing the fields name ot synchronize
+    :param field_names: the Set containing the fields name ot synchronize
     :param check_pipeline: if True, the field's pipeline is checked and an exception is raised is there is an active pipeline.
     :return: Callable
     """
     def decorator(method: TCallable) -> TCallable:
         @wraps(method)
         def sync_method(self, *args, **kwargs):
-            locks = [self._locks[field_name] for field_name in fields_name]
+            locks = [self._locks[field_name] for field_name in field_names]
             try:
                 with self._acquire_lock:
                     [lock.acquire() for lock in locks]
                 if check_pipeline:
-                    for field_name in fields_name:
+                    for field_name in field_names:
                         if field_name in self._pipelines.keys() and self._pipelines[field_name] is not None:
                             raise AnotherActivePipelineException('Be careful, there is another active pipeline for {0}, please terminate it.'.format(field_name))
 

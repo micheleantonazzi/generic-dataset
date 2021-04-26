@@ -63,9 +63,9 @@ class SampleGenerator:
     """
     def __init__(self, name: str):
         self._name = name
-        self._fields_name: Set[str] = {'is_positive'}
-        self._fields_type: Dict[str, type] = {'is_positive': bool}
-        self._fields_dataset: Dict[str, Dict[str, Callable]] = {}
+        self._field_names: Set[str] = {'is_positive'}
+        self._field_types: Dict[str, type] = {'is_positive': bool}
+        self._dataset_fields: Dict[str, Dict[str, Callable]] = {}
         self._custom_methods: Dict[str, Callable] = {}
 
     def add_field(self, field_name: str, field_type: type) -> 'SampleGenerator':
@@ -83,11 +83,11 @@ class SampleGenerator:
         :rtype: SampleGenerator
         """
 
-        if field_name in self._fields_name:
+        if field_name in self._field_names:
             raise FieldNameAlreadyExistsException(field_name=field_name)
 
-        self._fields_name.add(field_name)
-        self._fields_type[field_name] = field_type
+        self._field_names.add(field_name)
+        self._field_types[field_name] = field_type
 
         return self
 
@@ -113,7 +113,7 @@ class SampleGenerator:
         :rtype: SampleGenerator
         """
         self.add_field(field_name=field_name, field_type=field_type)
-        self._fields_dataset[field_name] = {'save_function': save_function, 'load_function': load_function}
+        self._dataset_fields[field_name] = {'save_function': save_function, 'load_function': load_function}
         return self
 
     def add_custom_pipeline(self, method_name: str, elaborated_field: str, final_field: str, pipeline: DataPipeline) -> 'SampleGenerator':
@@ -132,16 +132,16 @@ class SampleGenerator:
         :param pipeline:
         :return: SampleGenerator
         """
-        if elaborated_field not in self._fields_name:
+        if elaborated_field not in self._field_names:
             raise FieldDoesNotExistException(field_name=elaborated_field)
 
-        if final_field not in self._fields_name:
+        if final_field not in self._field_names:
             raise FieldDoesNotExistException(field_name=final_field)
 
-        if self._fields_type[elaborated_field] != np.ndarray:
+        if self._field_types[elaborated_field] != np.ndarray:
             raise FieldHasIncorrectTypeException(elaborated_field)
 
-        if self._fields_type[final_field] != np.ndarray:
+        if self._field_types[final_field] != np.ndarray:
             raise FieldHasIncorrectTypeException(field_name=final_field)
 
         if method_name in self._custom_methods.keys():
@@ -181,11 +181,11 @@ class SampleGenerator:
                 class_dict['__init__'] = self._create_constructor()
 
                 # Add setters, getters, pipeline method
-                for field in self._fields_name:
+                for field in self._field_names:
                     class_dict['set_' + field] = self._create_setter(field_name=field)
                     class_dict['get_' + field] = self._create_getter(field_name=field)
                     # Add pipeline methods only if field is a numpy.ndarray
-                    if self._fields_type[field] == np.ndarray:
+                    if self._field_types[field] == np.ndarray:
                         class_dict['create_pipeline_for_' + field] = self._create_add_pipeline_method(elaborated_field=field, final_field=field)
                         class_dict['get_pipeline_' + field] = self._create_get_pipeline(field)
 
@@ -205,7 +205,7 @@ class SampleGenerator:
 
         class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
             def get_dataset_fields(sample) -> Set[str]:
-                return sample._fields_dataset.keys()
+                return sample._dataset_fields.keys()
 
         # Copy the docstrings of the override methods
         GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
@@ -220,23 +220,23 @@ class SampleGenerator:
         def __init__(sample, is_positive: bool):
             super(type(sample), sample).__init__()
 
-            sample._fields_name: Set[str] = self._fields_name.copy()
-            sample._fields_type: Dict[str, type] = self._fields_type.copy()
-            sample._fields_value: Dict[str, Any] = {field_name: None for field_name in sample._fields_name}
-            sample._fields_value['is_positive'] = is_positive
+            sample._field_names: Set[str] = self._field_names.copy()
+            sample._field_types: Dict[str, type] = self._field_types.copy()
+            sample._field_values: Dict[str, Any] = {field_name: None for field_name in sample._field_names}
+            sample._field_values['is_positive'] = is_positive
             # The fields with a pipeline must be numpy.ndarray
-            sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._fields_name if sample._fields_type[field_name] == np.ndarray}
-            sample._locks: Dict[str, RLock] = {field_name: RLock() for field_name in sample._fields_name}
-            sample._fields_dataset = self._fields_dataset.copy()
+            sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._field_names if sample._field_types[field_name] == np.ndarray}
+            sample._locks: Dict[str, RLock] = {field_name: RLock() for field_name in sample._field_names}
+            sample._dataset_fields = self._dataset_fields.copy()
             sample._acquire_lock = RLock()
 
         return __init__
 
     def _create_setter(self, field_name: str):
-        field_type: type = self._fields_type[field_name]
+        field_type: type = self._field_types[field_name]
         class_name = self._name
 
-        @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+        @synchronize_on_fields(field_names={field_name}, check_pipeline=True)
         def f(sample, value: field_type) -> class_name:
             """
             Sets "{0}" parameter.
@@ -248,9 +248,9 @@ class SampleGenerator:
             :return: the {3} object
             :rtype: {4}
             """
-            if sample._fields_type[field_name] != type(value):
+            if not isinstance(value, sample._field_types[field_name]):
                 raise FieldHasIncorrectTypeException(field_name)
-            sample._fields_value[field_name] = value
+            sample._field_values[field_name] = value
             return sample
 
         f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__, class_name, class_name)
@@ -258,9 +258,9 @@ class SampleGenerator:
         return f
 
     def _create_getter(self, field_name: str):
-        field_type: type = self._fields_type[field_name]
+        field_type: type = self._field_types[field_name]
 
-        @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+        @synchronize_on_fields(field_names={field_name}, check_pipeline=True)
         def f(sample) -> field_type:
             """
             Return "{0}" value.
@@ -269,7 +269,7 @@ class SampleGenerator:
             :return: the value of {1}
             :rtype: {2}
             """
-            return sample._fields_value[field_name]
+            return sample._field_values[field_name]
 
         f.__doc__ = f.__doc__.format(field_name, field_name, field_type.__name__)
 
@@ -278,7 +278,7 @@ class SampleGenerator:
     def _create_add_pipeline_method(self, elaborated_field: str, final_field: str, operations: queue.Queue = None):
         fields = {elaborated_field, final_field}
 
-        @synchronize_on_fields(fields_name=fields, check_pipeline=True)
+        @synchronize_on_fields(field_names=fields, check_pipeline=True)
         def f(sample) -> DataPipeline:
             """
             Creates and returns a new pipeline to elaborate "{0}".
@@ -292,13 +292,13 @@ class SampleGenerator:
             def assign(data: np.ndarray) -> np.ndarray:
                 with sample._acquire_lock:
                     [sample._locks[field].acquire() for field in fields]
-                sample._fields_value[final_field] = data
+                sample._field_values[final_field] = data
                 for field in fields:
                     sample._pipelines[field] = None
                 [sample._locks[field].release() for field in fields]
                 return data
 
-            pipeline_configured = DataPipeline().set_data(sample._fields_value[elaborated_field]).set_end_function(assign)
+            pipeline_configured = DataPipeline().set_data(sample._field_values[elaborated_field]).set_end_function(assign)
             if operations !=  None:
                 pipeline_configured.set_operations(operations)
             for field in fields:
@@ -313,18 +313,18 @@ class SampleGenerator:
         class_name = self._name
 
         def f(sample, field_name: str, path: str, file_name: str) -> class_name:
-            if field_name not in sample._fields_name:
+            if field_name not in sample._field_names:
                 raise FieldDoesNotExistException(field_name=field_name)
 
-            if field_name not in sample._fields_dataset.keys():
+            if field_name not in sample._dataset_fields.keys():
                 raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
 
             if path == '' or not os.path.exists(path):
                 raise FileNotFoundError('Unable to save the file, the path does not exist!')
 
-            @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+            @synchronize_on_fields(field_names={field_name}, check_pipeline=True)
             def wrapped_save_function(sample):
-                sample._fields_dataset[field_name]['save_function'](os.path.join(path, file_name), sample._fields_value[field_name])
+                sample._dataset_fields[field_name]['save_function'](os.path.join(path, file_name), sample._field_values[field_name])
 
             wrapped_save_function(sample)
             return sample
@@ -335,18 +335,18 @@ class SampleGenerator:
         class_name = self._name
 
         def f(sample, field_name: str, path: str, file_name: str) -> class_name:
-            if field_name not in sample._fields_name:
+            if field_name not in sample._field_names:
                 raise FieldDoesNotExistException(field_name=field_name)
 
-            if field_name not in sample._fields_dataset.keys():
+            if field_name not in sample._dataset_fields.keys():
                 raise FieldIsNotDatasetPart('You cannot save {0}: it is not a part of the dataset!'.format(field_name))
 
             if path == '' or not os.path.exists(path):
                 raise FileNotFoundError('Unable to load the file, the path does not exist!')
 
-            @synchronize_on_fields(fields_name={field_name}, check_pipeline=True)
+            @synchronize_on_fields(field_names={field_name}, check_pipeline=True)
             def wrapped_load_function(sample):
-                sample._fields_value[field_name] = sample._fields_dataset[field_name]['load_function'](os.path.join(path, file_name))
+                sample._field_values[field_name] = sample._dataset_fields[field_name]['load_function'](os.path.join(path, file_name))
 
             wrapped_load_function(sample)
             return sample
@@ -355,7 +355,7 @@ class SampleGenerator:
 
     def _create_get_pipeline(self, field_name: str):
 
-        @synchronize_on_fields(fields_name={field_name}, check_pipeline=False)
+        @synchronize_on_fields(field_names={field_name}, check_pipeline=False)
         def f(sample) -> DataPipeline:
             """
             Returns the pipeline of {0}. If there isn't an active pipeline, returns None.
