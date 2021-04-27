@@ -3,7 +3,7 @@ import re
 import threading
 from abc import ABCMeta
 from concurrent.futures._base import Future
-from typing import NoReturn, Union, Type, List, Tuple
+from typing import NoReturn, Union, Type, List, Tuple, Dict
 from concurrent.futures import ThreadPoolExecutor
 
 from generic_dataset.generic_sample import GenericSample
@@ -11,39 +11,25 @@ from generic_dataset.generic_sample import GenericSample
 
 class DatasetDiskManager:
     """
-    This class manages storage and loading of the dataset from disk.
-    It automatically creates the dataset saving directory according to the fields of the generated sample class.
-    DatasetDiskManager can automatically handle any generated sample class created using SampleGenerator.
-    The dataset directory is organized as follow:
-        - dataset (dir)
-            - folder_1 (dir)
-                - positive_samples (dir)
-                    - sample_field_1 (dir)
-                        positive_filed_1_sample_1_(1) (file)
-                        positive_field_1_sample_4_(2) (file)
-                    - sample_field_2 (dir)
-                        positive_filed_2_sample_2_(1) (file)
-                        positive_field_2_sample_3_(1) (file)
-                - negative_samples (dir)
-                    - sample_field_1 (dir)
-                        .... (files)
-                    - sample_field_2 (dir)
-                        .... (files)
-            - folder_2 (dir)
-
-
-    At the top level, the samples are divided into several "folders" (they can represent different procedures to acquire the data or different data categories).
-    Subsequently, samples are divided into positive and negative. Finally, the sample fields are grouped according to their type
-    in dedicated directories. Inside these folders, the data are ordered with respect to the sample they belong to.
-    The files are called as follow: {p}_{field_name}_sample_{c}_({n}) where:
+    This class manages storage and loading of the data from disk.
+    It automatically creates the dataset saving directory according to the label and the fields of the generated sample class.
+    DatasetDiskManager can automatically handle any generated sample class, created by SampleGenerator.
+    DatasetDiskManager, inside constructor, automatically creates the folder tree where save the samples.
+    At the beginning, it creates the dataset main folder.
+    Inside it, the samples are divided into several "folders" (they can represent different procedures to acquire the data or different data categories).
+    Subsequently, samples are divided according to their labels: if samples model a classification problem, a folder for each possible label is created
+    and the samples are saved inside the correspondent one.
+    This means that the sample label is based on the folder it is saved.
+    Otherwise, for a regression problem, the samples are simply saved all together and the sample labels are saved within files as generic fields.
+    Finally, the samples are saved grouping fields in dedicated directories (so a folder for each field is created).
+    Inside these folders, the data are ordered with respect to the sample they belong to.
+    The files are called as follow: {field_name}_sample_{c}_({n}) where:
         - p = 'positive' or 'negative'
-        - c = the progressive count of the sample inside its category (positive or negative)
+        - c = the progressive count of the sample inside its category (depending on label)
         - n = the sample absolute progressive count
     """
-    _POSITIVE_DATA_FOLDER = 'positive_samples'
-    _NEGATIVE_DATA_FOLDER = 'negative_samples'
 
-    def __init__(self, dataset_path: str, folder_name: str, sample_class: type(GenericSample)):
+    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample]):
         """
         Instantiates a new instance of DatasetDiskManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
@@ -63,74 +49,50 @@ class DatasetDiskManager:
         self._lock = threading.Lock()
         self._pool = ThreadPoolExecutor(max_workers=8)
 
-        negative_names, positive_names = self._get_positives_negative_names()
+        self._get_sample_counts()
 
-        file_name_regexp = r'^(positive|negative)_(.+)_(\d+)_\((\d+)\).(.*)$'
-        # list[i] contains the information of the positive and negative samples,
-        # ordered by relative count in sample's category (positive or negative).
-        # The information consist in a tuple, where tuple[i] is the absolute count of the sample
-        self._positive_samples_information: List[Tuple[int]] = \
-            sorted([(int(re.match(file_name_regexp, file_name).group(4)),) for file_name in positive_names], key=lambda t: t[0])
-        self._negative_samples_information: List[Tuple[int]] = \
-            sorted([(int(re.match(file_name_regexp, file_name).group(4)),) for file_name in negative_names], key=lambda t: t[0])
-
-        pos_with_count = [(True, i, absolute) for i, absolute in zip(range(len(self._positive_samples_information)), self._positive_samples_information)]
-        neg_with_count = [(False, i, absolute) for i, absolute in zip(range(len(self._negative_samples_information)), self._negative_samples_information)]
-
-        # Contains the information of all samples ordered by absolute count
-        # The information are contained in a tuple, where
-        # tuple[0] contains a bool values with tells if the sample is positive,
-        # while tuple[1] contains the sample count in its category (positive or negative)
-        self._absolute_samples_information: List[Tuple[bool, int]] = [(pos, i) for pos, i, _ in sorted(pos_with_count + neg_with_count, key=lambda t: t[2])]
-
-    def get_negative_samples_count(self) -> int:
+    def get_sample_total_amount(self, label: int) -> int:
         """
-        Returns the number of negative samples in the current folder.
-        :return: the number of negative samples.
+        Returns the number of sample with the given label in the current folder.
+        If the a regression problem is modelled (so the label is a real number), this methods returns the total amount of the samples
+        :raise KeyError: if the label does not exists
+        :param label: the label of the samples to get the total amount
+        :type label: int
+        :return: the number of samples.
         :rtype: int
         """
         with self._lock:
-            return len(self._negative_samples_information)
+            if self._sample_class.GET_LABEL_SET():
+                return len(self._label_counts[label])
+            else:
+                return len(self._absolute_samples_information)
 
-    def get_positive_samples_count(self) -> int:
+    def get_samples_absolute_count(self, label: int) -> List[int]:
         """
-        Returns the number of positive samples in the current folder.
-        :return: the number of positive samples.
-        :rtype: int
+        Returns the absolute count of the samples with the given label, sorted according to their category order.
+        The return value is a list with length equal to the number of sample with the given label, each cell contains an integer: the absloute count of the i-th sample.
+        If the a regression problem is modelled (so the label is a real number), this methods returns a list such that list[i] = i
+        :raise KeyError: if the label does not exists
+        :return: a list with the samples absolute counts
+        :rtype: List[int]
         """
         with self._lock:
-            return len(self._positive_samples_information)
+            if self._sample_class.GET_LABEL_SET():
+                return self._label_counts[label].copy()
+            else:
+                return [count for label, count in self._absolute_samples_information]
 
-    def get_positive_samples_information(self) -> List[Tuple[int]]:
-        """
-        Returns the positive samples' information, sorted according to the order the positive examples
-        The return value is a list with length equal to the number of examples, each cell contains a tuple, where:
-            - tuple[0] = absolute sample count
-        :return: a list with the positive samples information
-        :rtype: List[Tuple[int]]
-        """
-        with self._lock:
-            return self._positive_samples_information.copy()
-
-    def get_negative_samples_information(self) -> List[Tuple[int]]:
-        """
-        Returns the negative samples' information, sorted according to the order the negative examples
-        The return value is a list with length equal to the number of examples, each cell contains a tuple, where:
-            - tuple[0]: int = absolute sample count
-        :return: a list with the negative samples information
-        :rtype: List[Tuple[int]]
-        """
-        with self._lock:
-            return self._negative_samples_information.copy()
-
-    def get_absolute_samples_information(self) -> List[Tuple[bool, int]]:
+    def get_absolute_samples_information(self) -> List[Tuple[int, int]]:
         """
         Returns the information about all sample, sorted by their absolute count.
-        The return value is a list of tuples (Tuple[bool, int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:
-            - tuple[0]: bool = the sample's positiveness
-            - tuple[1]: the sample count inside its category (positive or negative)
+        The return value is a list of tuples (Tuple[int, int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:
+            - tuple[0]: int = the sample's label
+            - tuple[1]: the sample count inside its category (depending on its label)
+        If the a regression problem is modelled (so the label is a real number), this methods returns a list of tuple, where list[i] =
+            - tuple[0] = 0 (fake label)
+            - tuple[1] = i
         :return: a list containing all samples information
-        :rtype: List[Tuple[bool, int]]
+        :rtype: List[Tuple[int, int]]
         """
         with self._lock:
             return self._absolute_samples_information.copy()
@@ -149,21 +111,22 @@ class DatasetDiskManager:
             raise TypeError('The sample type is wrong!')
 
         with self._lock:
-            if sample.get_is_positive():
-                count = len(self._positive_samples_information)
-                self._positive_samples_information.append((len(self._absolute_samples_information),))
-                self._absolute_samples_information.append((True, count))
-            elif not sample.get_is_positive():
-                count = len(self._negative_samples_information)
-                self._negative_samples_information.append((len(self._absolute_samples_information),))
-                self._absolute_samples_information.append((False, count))
+            if self._sample_class.GET_LABEL_SET():
+                label = sample.get_label()
+                count = len(self._label_counts[label])
+                absolute_count = len(self._absolute_samples_information)
 
-            absolute_sample_count = len(self._absolute_samples_information) - 1
+                # Updated information
+                self._label_counts[label].append(absolute_count)
+                self._absolute_samples_information.append((label, count))
+            else:
+                count = absolute_count = len(self._absolute_samples_information)
+                self._absolute_samples_information.append((0, count))
 
         function = self._save_or_load_sample(
             sample=sample,
             save_or_load='save',
-            absolute_count=absolute_sample_count,
+            absolute_count=absolute_count,
             relative_count=count)
 
         if use_thread:
@@ -173,7 +136,7 @@ class DatasetDiskManager:
 
     def load_sample_using_absolute_count(self, absolute_count: int, use_thread: bool) -> Union[GenericSample, Future]:
         """
-        Loads the sample with the given absolute count. The loaded sample can be positive or negative.
+        Loads the sample with the given absolute count.
         :param absolute_count: the sample absolute count
         :type absolute_count: int
         :param use_thread: if True, the loading procedure is executed in a separate thread
@@ -185,8 +148,13 @@ class DatasetDiskManager:
         with self._lock:
             sample_information = self._absolute_samples_information[absolute_count]
 
+            if self._sample_class.GET_LABEL_SET():
+                sample_label = sample_information[0]
+            else:
+                sample_label = 0.0
+
         function = self._save_or_load_sample(
-            sample=self._sample_class(is_positive=sample_information[0]),
+            sample=self._sample_class(label=sample_label),
             save_or_load='load',
             absolute_count=absolute_count,
             relative_count=sample_information[1])
@@ -196,20 +164,25 @@ class DatasetDiskManager:
         else:
             return function()
 
-    def load_sample_using_relative_count(self, is_positive: bool, relative_count: int, use_thread: bool) -> Union[GenericSample, Future]:
+    def load_sample_using_relative_count(self, label: int, relative_count: int, use_thread: bool) -> Union[GenericSample, Future]:
         """
         Loads the sample that has the given relative count with respect to its category (positive or negative).
-        :param is_positive: the category of the sample to load
+        If a regression problem is modelled, the label is ignored and the relative count coincides with the absolute count.
+        :param label: the label of the sample to load
         :param relative_count: the sample's relative count
         :return: the loaded sample if use_thread is false, otherwise a future which returns the loaded sample when the procedure is completed
         :rtype: Union[GenericSample, Future]
         """
         with self._lock:
-            absolute_count = self._positive_samples_information[relative_count][0] if is_positive else \
-                self._negative_samples_information[relative_count][0]
+            if self._sample_class.GET_LABEL_SET():
+                absolute_count = self._label_counts[label][relative_count]
+                sample_label = label
+            else:
+                absolute_count = relative_count
+                sample_label = 0.0
 
         function = self._save_or_load_sample(
-            sample=self._sample_class(is_positive=is_positive),
+            sample=self._sample_class(sample_label),
             save_or_load='load',
             absolute_count=absolute_count,
             relative_count=relative_count)
@@ -223,13 +196,14 @@ class DatasetDiskManager:
 
         def f():
             with sample as sample_locked:
-                fold = DatasetDiskManager._POSITIVE_DATA_FOLDER if sample_locked.get_is_positive() else DatasetDiskManager._NEGATIVE_DATA_FOLDER
-                path = os.path.join(self._dataset_path, self._folder_name, fold)
+                if self._sample_class.GET_LABEL_SET():
+                    path = os.path.join(self._dataset_path, self._folder_name, str(sample.get_label()))
+                else:
+                    path = os.path.join(self._dataset_path, self._folder_name)
 
-                for field in sample_locked.get_dataset_fields():
-                    file_name = 'positive_' if sample_locked.get_is_positive() else 'negative_'
-                    file_name += field + '_' + str(relative_count) + '_('
-                    file_name = file_name + str(absolute_count)
+                for field in self._sample_class.GET_DATASET_FIELDS():
+                    file_name = field + '_' + str(relative_count) + '_('
+                    file_name += str(absolute_count)
                     file_name += ')'
 
                     if save_or_load == 'save':
@@ -241,18 +215,41 @@ class DatasetDiskManager:
 
         return f
 
-    def _get_positives_negative_names(self):
-        field = list(self._sample_class(is_positive=False).get_dataset_fields())[0]
-        negative_path = os.path.join(self._dataset_path, self._folder_name,
-                                         DatasetDiskManager._NEGATIVE_DATA_FOLDER, field)
+    def _get_sample_counts(self):
+        label_set = self._sample_class.GET_LABEL_SET()
 
-        negative_names = [name for name in os.listdir(negative_path) if os.path.isfile(os.path.join(negative_path, name))]
+        # For each label, contains a list of int, where:
+        # i = sample count in its category (depending on its label)
+        # list[i] = the absolute count of the i-th sample
+        self._label_counts: Dict[int, List[int]] = {}
 
-        positive_path = os.path.join(self._dataset_path, self._folder_name,
-                                         DatasetDiskManager._POSITIVE_DATA_FOLDER, field)
+        # list[i] = tuple[int, int], which are the information about the sample with i as absolute count, where
+        #   - tuple[0] = contains the sample information label
+        #   - tuple[1] = sample count in its category (label)
 
-        positives_name = [name for name in os.listdir(positive_path) if os.path.isfile(os.path.join(positive_path, name))]
-        return negative_names, positives_name
+        self._absolute_samples_information: List[Tuple[int, int]] = []
+        field = list(self._sample_class.GET_DATASET_FIELDS())[0]
+        file_name_regexp = r'^(.+)_(\d+)_\((\d+)\).(.*)$'
+        # If the label set is not empty, samples has a int label and the they are saved in different folders according to their labels
+        if label_set:
+            total_count: List[Tuple[int, int, int]] = []
+
+            for label in self._sample_class.GET_LABEL_SET():
+                label_path = os.path.join(self._dataset_path, self._folder_name, str(label), str(field))
+                file_names = [name for name in os.listdir(label_path) if os.path.isfile(os.path.join(label_path, name))]
+
+                absolute_counts = [int(re.match(file_name_regexp, file_name).group(3)) for file_name in file_names]
+                absolute_counts.sort()
+                self._label_counts[label] = absolute_counts
+                total_count += [(abs_count, label, rel_count) for rel_count, abs_count in zip(range(len(absolute_counts)), absolute_counts)]
+
+            total_count.sort(key=lambda item: item[0])
+            self._absolute_samples_information = [(label, rel_count) for abs_count, label, rel_count in total_count]
+        else:
+            path = os.path.join(self._dataset_path, self._folder_name, str(field))
+            file_names = [name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))]
+            self._absolute_samples_information = [(0, int(re.match(file_name_regexp, file_name).group(3))) for file_name in file_names]
+            self._absolute_samples_information.sort(key=lambda item: item[1])
 
     def _set_up_folders(self):
         if not os.path.exists(os.path.dirname(self._dataset_path)):
@@ -266,17 +263,21 @@ class DatasetDiskManager:
         if not os.path.exists(folder_dataset_path):
             os.mkdir(folder_dataset_path)
 
-        positive_samples_path = os.path.join(folder_dataset_path, DatasetDiskManager._POSITIVE_DATA_FOLDER)
-        if not os.path.exists(positive_samples_path):
-            os.mkdir(positive_samples_path)
+        label_set = self._sample_class.GET_LABEL_SET()
+        if label_set:
+            for label in label_set:
+                label_path = os.path.join(folder_dataset_path, str(label))
+                if not os.path.exists(label_path):
+                    os.mkdir(label_path)
 
-        negative_samples_path = os.path.join(folder_dataset_path, DatasetDiskManager._NEGATIVE_DATA_FOLDER)
-        if not os.path.exists(negative_samples_path):
-            os.mkdir(negative_samples_path)
-
-        dataset_fields = self._sample_class(is_positive=False).get_dataset_fields()
-        for folder in [positive_samples_path, negative_samples_path]:
+                dataset_fields = self._sample_class.GET_DATASET_FIELDS()
+                for field in dataset_fields:
+                    field_path = os.path.join(label_path, field)
+                    if not os.path.exists(field_path):
+                        os.mkdir(field_path)
+        else:
+            dataset_fields = self._sample_class.GET_DATASET_FIELDS()
             for field in dataset_fields:
-                field_path = os.path.join(folder, field)
+                field_path = os.path.join(folder_dataset_path, field)
                 if not os.path.exists(field_path):
                     os.mkdir(field_path)

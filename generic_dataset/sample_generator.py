@@ -1,9 +1,10 @@
 import os
 import queue
 from abc import ABCMeta
-from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn
+from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn, Tuple, Type
 import numpy as np
 from threading import RLock
+import generic_dataset.utilities.save_load_methods as slm
 
 from generic_dataset.data_pipeline import DataPipeline
 from generic_dataset.generic_sample import GenericSample, \
@@ -39,15 +40,19 @@ class MethodAlreadyExistsException(Exception):
 class SampleGenerator:
     """
     This object generates customized Sample class according to the needs of the programmer.
-    Using a sample generator it is possible to adds fields to the final Sample class.
-    For each field, it is possible to specify its name, its type and if it is a dataset member
-    (in this case, it is mandatory to specify a method to save and load this field from disk).
+    Samples are characterized by labels. To model a classification problem, you can specify a set of possible labels,
+    passing a set containing them to the constructor.
+    Otherwise, to model a regression problem, the sample label is a real number, and it is treated as a dataset field:
+    the labels set in the constructor must be empty.
+    To create your customized sample class, you can add fields, specifying their name, their type and if it is a dataset member
+    (in this case, it is mandatory to set the methods to save and load this field from disk).
     SampleGenerator automatically creates the following default method for each field:
     - get_{field_name}: getter
     - set_{field_name}: setter
     - create_pipeline_for_{field_name}: returns a DataPipeline to elaborate the correspondent field
     - get_{field_name}_pipeline: returns the pipeline instance for the specified field.
-    "is_positive" is a default field and it is added automatically to the generated sample class: this field must also be passes to the constructor.
+    As mentioned before, "label" is a default field and it is added automatically to the generated sample class:
+    this field must also be passes to the constructor and it could be an integer (for a classification problem) or a float (for a regression problem).
     In addition, other methods can be created and associated to a precise property.
     For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
     specified by the programmer.
@@ -61,12 +66,31 @@ class SampleGenerator:
     In addition, it is possible to use the sample generated class with a context manager (with statement):
     in this case all locks are acquired and then released.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, label_set: Set[int]):
+        """
+        Initializes a new sample generator instance.
+        :param name: the name of the sample generated class
+        :type name: str
+        :param label_set: the label set. To model a regression problem, set this param as an empty set.
+                            To model a classification problem, pass to this param a dictionary containing the possible labels.
+        :type label_set: Dict[int, str]
+        """
         self._name = name
-        self._field_names: Set[str] = {'is_positive'}
-        self._field_types: Dict[str, type] = {'is_positive': bool}
+        self._field_names: Set[str] = {'label'}
+        self._field_types: Dict[str, type] = {}
         self._dataset_fields: Dict[str, Dict[str, Callable]] = {}
         self._custom_methods: Dict[str, Callable] = {}
+        self._labels: Set[int] = set()
+
+        # Regression problem, the label is a float and it is modelled a generic dataset field
+        if not label_set:
+            self._field_types['label'] = float
+            self._dataset_fields['label'] = {'save_function': slm.save_float, 'load_function': slm.load_float}
+
+        # Classification problem: the label is a tuple and it is not a dataset field
+        else:
+            self._labels = label_set.copy()
+            self._field_types['label'] = int
 
     def add_field(self, field_name: str, field_type: type) -> 'SampleGenerator':
         """
@@ -171,7 +195,7 @@ class SampleGenerator:
         self._custom_methods[method_name] = function
         return self
 
-    def generate_sample_class(self) -> 'GenericSample':
+    def generate_sample_class(self) -> Type[GenericSample]:
         """
         Generates the sample class.
         :return: the sample class definition
@@ -204,32 +228,50 @@ class SampleGenerator:
                 return ABCMeta.__new__(cls, self._name, bases, class_dict)
 
         class GeneratedSampleClass(GenericSample, metaclass=MetaSample):
-            def get_dataset_fields(sample) -> Set[str]:
-                return sample._dataset_fields.keys()
+            _LABEL_SET = self._labels.copy()
+            _DATASET_FIELDS = set(self._dataset_fields.keys())
+
+            @staticmethod
+            def GET_LABEL_SET() -> Set[int]:
+                return GeneratedSampleClass._LABEL_SET.copy()
+
+            @staticmethod
+            def GET_DATASET_FIELDS() -> Set[str]:
+                return GeneratedSampleClass._DATASET_FIELDS.copy()
 
         # Copy the docstrings of the override methods
-        GeneratedSampleClass.get_dataset_fields.__doc__ = GenericSample.get_dataset_fields.__doc__
+        GeneratedSampleClass.GET_DATASET_FIELDS.__doc__ = GenericSample.GET_DATASET_FIELDS.__doc__
         GeneratedSampleClass.save_field.__doc__ = GenericSample.save_field.__doc__
         GeneratedSampleClass.load_field.__doc__ = GenericSample.load_field.__doc__
         GeneratedSampleClass.acquire_all_locks.__doc__ = GenericSample.acquire_all_locks.__doc__
         GeneratedSampleClass.release_all_locks.__doc__ = GenericSample.release_all_locks.__doc__
+        GeneratedSampleClass.GET_LABEL_SET.__doc__ = GenericSample.GET_LABEL_SET.__doc__
 
         return GeneratedSampleClass
 
     def _create_constructor(self):
-        def __init__(sample, is_positive: bool):
+        label_type = self._field_types['label']
+        if not self._labels:
+            default_label_value = 0.0
+        else:
+            l = list(self._labels)
+            l.sort()
+            default_label_value = l[0]
+
+        def __init__(sample, label: label_type = default_label_value):
             super(type(sample), sample).__init__()
 
             sample._field_names: Set[str] = self._field_names.copy()
             sample._field_types: Dict[str, type] = self._field_types.copy()
             sample._field_values: Dict[str, Any] = {field_name: None for field_name in sample._field_names}
-            sample._field_values['is_positive'] = is_positive
             # The fields with a pipeline must be numpy.ndarray
             sample._pipelines: Dict[str, Union[DataPipeline, None]] = {field_name: None for field_name in sample._field_names if sample._field_types[field_name] == np.ndarray}
             sample._locks: Dict[str, RLock] = {field_name: RLock() for field_name in sample._field_names}
             sample._dataset_fields = self._dataset_fields.copy()
             sample._acquire_lock = RLock()
 
+            # Set label
+            sample.set_label(label)
         return __init__
 
     def _create_setter(self, field_name: str):

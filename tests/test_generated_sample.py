@@ -17,7 +17,7 @@ if not os.path.exists(test_save_load_path):
 
 
 pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.array([1 for i in range(10000)]), engine))
-GeneratedSample = SampleGenerator(name='GeneratedSample')\
+GeneratedSample = SampleGenerator(name='GeneratedSample', label_set={0, 1})\
     .add_dataset_field(field_name='field_1', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
     .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
     .add_field(field_name='field_3', field_type=np.ndarray) \
@@ -26,18 +26,18 @@ GeneratedSample = SampleGenerator(name='GeneratedSample')\
 
 
 def test_setters_exists(use_gpu: bool = False):
-    generated_sample = GeneratedSample(is_positive=False)
+    generated_sample = GeneratedSample(label=1)
     generated_sample.set_field_1(value=np.array([])).set_field_2(value=np.array([]))
 
 
 def test_getter_exists(use_gpu: bool = False):
-    generated_sample = GeneratedSample(is_positive=False)
+    generated_sample = GeneratedSample(label=0)
     generated_sample.get_field_1()
     generated_sample.get_field_2()
 
 
 def test_setter_getter(use_gpu: bool = False):
-    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1]))
+    sample = GeneratedSample(label=1).set_field_1(np.array([1]))
     assert np.array_equal(np.array([1]), sample.get_field_1())
 
     with pytest.raises(FieldHasIncorrectTypeException):
@@ -68,7 +68,7 @@ def test_setter_getter(use_gpu: bool = False):
 
 
 def tests_pipeline(use_gpu: bool = False):
-    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1.1111 for i in range(10000)]))
+    sample = GeneratedSample(label=0).set_field_1(np.array([1.1111 for i in range(10000)]))
     pipeline = sample.create_pipeline_for_field_1().add_operation(lambda d, e: (e.around(d, 2), e))
     sample.create_pipeline_for_field_2()
 
@@ -83,14 +83,14 @@ def tests_pipeline(use_gpu: bool = False):
 
     ret = pipeline.run(use_gpu).get_data()
 
-    assert np.array_equal(ret, np.array([1.11 for i in range(10000)]))
+    assert np.array_equal(ret, np.array([1.11 for _ in range(10000)]))
     assert np.array_equal(sample.get_field_1(), np.array([1.11 for i in range(10000)]))
 
     sample.create_pipeline_for_field_1()
 
 
 def test_custom_pipeline(use_gpu: bool = False):
-    sample = GeneratedSample(is_positive=False).set_field_1(np.array([1.1111 for i in range(10000)]))
+    sample = GeneratedSample(label=0).set_field_1(np.array([1.1111 for i in range(10000)]))
     pipeline = sample.pipeline_field_1_2()
 
     with pytest.raises(AnotherActivePipelineException):
@@ -110,19 +110,19 @@ def test_custom_pipeline(use_gpu: bool = False):
 
 
 def test_get_dataset_fields(use_gpu: bool = False):
-    generated = GeneratedSample(is_positive=False)
+    generated = GeneratedSample(label=0)
 
     generated.create_pipeline_for_field_3()
 
-    dataset_fields = generated.get_dataset_fields()
+    dataset_fields = GeneratedSample.GET_DATASET_FIELDS()
 
     assert 'field_1' in dataset_fields
     assert 'field_2' in dataset_fields
     assert not 'field_3' in dataset_fields
 
 
-def test_save_load_generic_field(use_gpu = False):
-    generated = GeneratedSample(is_positive=False).set_field_1(np.array([1]))
+def test_save_load_generic_field(use_gpu: bool = False):
+    generated = GeneratedSample(label=1).set_field_1(np.array([1]))
 
     with pytest.raises(FieldDoesNotExistException):
         generated.save_field(field_name='field', path='', file_name='')

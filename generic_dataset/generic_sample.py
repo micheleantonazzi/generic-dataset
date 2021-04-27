@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from functools import wraps
-from typing import Set, Any, TypeVar, Callable
+from typing import Set, Any, TypeVar, Callable, Union
 
 
 class AnotherActivePipelineException(Exception):
@@ -61,26 +61,44 @@ def synchronize_on_fields(field_names: Set[str], check_pipeline: bool) -> Callab
 class GenericSample(metaclass=ABCMeta):
     """
     This base class represents a generic sample, which can be specialized using SampleGenerator.
+    Typically, in a classification problem, a sample is characterized by its label, which belongs to a closed set of possible values.
+    Otherwise, in a regression problem, the sample label is a real number and the space of the labels is infinite.
+    To model a regression problem, the static method GET_LABEL_SET returns an empty set of int, while get_label returns a float value as sample label.
+    In this case, the sample label is considered as a dataset field and is it save to disk in a file.
+    For a classification problem, instead, the method GET_LABEL_SET returns the possible labels' values in a set of integers,
+    while get_label method returns an integer value (the label). In this situation, the labels are not saved to disk a dataset field,
+    but samples are divided in different folder, according to their label.
     """
     def __init__(self):
         pass
 
+    @staticmethod
     @abstractmethod
-    def get_is_positive(self) -> bool:
+    def GET_LABEL_SET() -> Set[int]:
+        """
+        Return a set containing the possible labels the sample instance can have.
+        If the sample belongs to a regression problem, it returns an empty set.
+        :return: a set containing the labels indexes and their values. It can be empty.
+        """
         pass
 
+    @staticmethod
     @abstractmethod
-    def set_is_positive(self, is_positive: bool) -> 'GenericSample':
-        pass
-
-    @abstractmethod
-    def get_dataset_fields(self) -> Set[str]:
+    def GET_DATASET_FIELDS() -> Set[str]:
         """
         Returns the parameter names that belong to the dataset (those must be saved and load from disk)
         :return: the parameter names set
         :rtype: Set[str]
         """
         pass
+
+    @abstractmethod
+    def get_label(self) -> Union[float, int]:
+        """
+        Returns the sample label. If the sample belongs to a classification problem,
+        the label is aa integer, otherwise for a regression problem, the sample label is a float.
+        :return: the label as int or float value
+        """
 
     @abstractmethod
     def save_field(self, field_name: str, path: str, file_name: str) -> 'GenericSample':
