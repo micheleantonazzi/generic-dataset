@@ -195,7 +195,7 @@ class SampleGenerator:
         self._custom_methods[method_name] = function
         return self
 
-    def generate_sample_class(self) -> Type[GenericSample]:
+    def generate_sample_class(self) -> Type['GeneratedSampleClass']:
         """
         Generates the sample class.
         :return: the sample class definition
