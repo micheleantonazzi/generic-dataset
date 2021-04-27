@@ -9,6 +9,16 @@ import cv2
 import numpy as np
 
 
+def save_float(path: str, data: float) -> NoReturn:
+    with open(path + '.txt', mode='w') as file:
+        file.write(str(data))
+
+
+def load_float(path: str) -> float:
+    with open(path + '.txt', mode='r') as file:
+        return float(file.readline())
+
+
 def save_cv2_image(path: str, data: np.ndarray) -> NoReturn:
     cv2.imwrite(path + '.png', data)
 

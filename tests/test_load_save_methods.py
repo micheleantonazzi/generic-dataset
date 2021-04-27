@@ -1,11 +1,23 @@
 import os
+import shutil
+
 import numpy as np
 import generic_dataset.utilities.save_load_methods as slm
 
 
+
 test_methods_path = os.path.join(os.path.dirname(__file__), 'test_folder_save_load_methods')
-if not os.path.exists(test_methods_path):
-    os.mkdir(test_methods_path)
+shutil.rmtree(test_methods_path, ignore_errors=True)
+os.mkdir(test_methods_path)
+
+
+def test_save_load_float():
+    path = os.path.join(test_methods_path, 'float_file')
+    slm.save_float(path=path, data=1.1234)
+
+    saved = slm.load_float(path=path)
+
+    assert saved == 1.1234
 
 
 def test_cv2_save_load_methods():
