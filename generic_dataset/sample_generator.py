@@ -1,7 +1,7 @@
 import os
 import queue
 from abc import ABCMeta
-from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn, Tuple, Type
+from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn, Type
 import numpy as np
 from threading import RLock
 import generic_dataset.utilities.save_load_methods as slm
@@ -31,7 +31,7 @@ class FieldDoesNotExistException(Exception):
 
 class MethodAlreadyExistsException(Exception):
     """
-    This exception is raised when a method to add already exists
+    This exception is raised when a method already exists
     """
     def __init__(self, method_name):
         super(MethodAlreadyExistsException, self).__init__('A method called {0} already exists: you cannot add a new one!!'.format(method_name))
@@ -39,7 +39,7 @@ class MethodAlreadyExistsException(Exception):
 
 class SampleGenerator:
     """
-    This object generates customized Sample class according to the needs of the programmer.
+    This object generates customized Sample classes according to the needs of the programmer.
     Samples are characterized by labels. To model a classification problem, you can specify a set of possible labels,
     passing a set containing them to the constructor.
     Otherwise, to model a regression problem, the sample label is a real number, and it is treated as a dataset field:
@@ -51,29 +51,28 @@ class SampleGenerator:
     - set_{field_name}: setter
     - create_pipeline_for_{field_name}: returns a DataPipeline to elaborate the correspondent field
     - get_{field_name}_pipeline: returns the pipeline instance for the specified field.
-    As mentioned before, "label" is a default field and it is added automatically to the generated sample class:
-    this field must also be passes to the constructor and it could be an integer (for a classification problem) or a float (for a regression problem).
-    In addition, other methods can be created and associated to a precise property.
+    As mentioned before, the sample label is treated as a default field and it is automatically added to the generated sample class.
+    The label must also be passed to the constructor and it could be an integer (for a classification problem) or a float (for a regression problem).
+    In addition, other methods can be created and added to the generated sample class.
     For example, they could be used to generate and return a predefined pipeline or to execute a generic function,
     specified by the programmer.
-    The final generated sample class is thread safe: a lock is associated to each filed
-    and all the automatic generated methods must acquire all lock related to all fields they use.
-    This means that two different threads cannot simultaneously execute two methods that use the same fields.
-    Keep in mind that only automatically created method are thread safe, unlike the custom methods added by the programmer.
+    The final generated sample class is thread-safe: a lock is associated with each field
+    and all the automatic generated methods must acquire all locks related to the fields they use.
+    This means that two threads cannot simultaneously execute two methods that use the same fields.
+    Keep in mind that only automatically created methods are thread-safe, unlike the custom methods added by the programmer.
     To avoid this issue, the user can decorate the custom functions using the synchronized_on_field decorator before passing them to the "add_custom_method" function.
-    Sometimes it could be necessary block a sample instance to execute a series of actions as a atomic operation.
-    To this, the sample generated class offers two methods to acquire and release all locks associated to all fields (like saving and loading sample from disk).
-    In addition, it is possible to use the sample generated class with a context manager (with statement):
-    in this case all locks are acquired and then released.
+    Sometimes it could be necessary to synchronize a series of operations to an entire sample instance (like saving and loading a sample from disk).
+    To do this, the sample generated class offers two methods to acquire and release all locks associated with all its fields.
+    In addition, it is possible to use the sample generated class with a context manager (with statement), which acquires and then releases all locks.
     """
     def __init__(self, name: str, label_set: Set[int]):
         """
         Initializes a new sample generator instance.
-        :param name: the name of the sample generated class
+        :param name: the name of the generated class
         :type name: str
         :param label_set: the label set. To model a regression problem, set this param as an empty set.
-                            To model a classification problem, pass to this param a dictionary containing the possible labels.
-        :type label_set: Dict[int, str]
+                            To model a classification problem, pass to this param a set containing the possible labels.
+        :type label_set: Set[int]
         """
         self._name = name
         self._field_names: Set[str] = {'label'}
@@ -95,10 +94,10 @@ class SampleGenerator:
     def add_field(self, field_name: str, field_type: type) -> 'SampleGenerator':
         """
         Adds a field with the given name and type.
-        The field is not considered as part of the dataset: it is a simple instance property.
+        The field is not considered as a dataset part: it is a simple instance property.
         For each field, getter and setter methods are automatically created.
-        If field_type is "numpy.ndarray", it is also added a methods to create and get a DataPipeline to elaborate it.
-        :raise FieldNameAlreadyExists: if the field name already exists
+        If field_type is "numpy.ndarray", other two methods are created: the first generates a DataPipeline to elaborate it, and the second returns this pipeline.
+        :raise FieldNameAlreadyExists if the field name already exists
         :param field_name: the name of the field
         :type field_name: str
         :param field_type: the type of the field
@@ -120,11 +119,11 @@ class SampleGenerator:
         Adds a field with the given name and type. The field is considered a part of the dataset,
         so it is saved and load from disk by DatasetDiskManager.
         For each field, getter and setter methods are automatically created.
-        If field_type is "numpy.ndarray", it is also added a methods to create and get a DataPipeline to elaborate it.
-        For a dataset field, it is mandatory to set up the functions to save and load it to disk.
-        The save function must have the signature: save_function(path:str, data: data_type) -> NoReturn: ...
-        The load function, instead, must be like this: load_function(path: str) -> data_type: ...
-        :raise FieldNameAlreadyExists: if the field name already exists
+        If field_type is "numpy.ndarray", other two methods are created: the first generates a DataPipeline to elaborate it, and the second returns this pipeline.
+        For a dataset field, it is mandatory to specify the functions to save and load it from disk.
+        The save function must have the signature: "save_function(path:str, data: data_type) -> NoReturn: ..."
+        The load function, instead, must be like this: "load_function(path: str) -> data_type: ..."
+        :raise FieldNameAlreadyExists if the field name already exists
         :param field_name: the name of the field
         :type field_name: str
         :param field_type: the type of the field
@@ -142,16 +141,16 @@ class SampleGenerator:
 
     def add_custom_pipeline(self, method_name: str, elaborated_field: str, final_field: str, pipeline: DataPipeline) -> 'SampleGenerator':
         """
-        Creates a method which returns a predefined pipeline to elaborate a precise field. The pipeline results can be assigned to final_field
-        This is useful to create once a pipeline frequently used.
-        :raise FieldDoesNotExistsException: if the specified fields do not exists (elaborated and final fields)
-        :raise FieldHasIncorrectType: if the field is not a numpy.ndarray (a pipeline can be executed only using a numpy.ndarray)
-        :raise MethodAlreadyExists: if the method_name already exists
+        Creates a method which returns a predefined pipeline to elaborate a precise field. The pipeline result is automatically assigned to final_field
+        This is useful to set up a pipeline frequently used.
+        :raise FieldDoesNotExistsException if the specified fields do not exist (both elaborated and final fields)
+        :raise FieldHasIncorrectType if the field is not a numpy.ndarray (a pipeline can be executed only on a numpy.ndarray)
+        :raise MethodAlreadyExists if the method_name already exists
         :param method_name: the name of the method
         :type method_name: str
         :param elaborated_field: the field to elaborate with Pipeline
         :type elaborated_field: str
-        :param final_field: the field to associate the pipeline
+        :param final_field: the field in which to save the pipeline result
         :type final_field: str
         :param pipeline:
         :return: SampleGenerator
@@ -176,15 +175,14 @@ class SampleGenerator:
 
     def add_custom_method(self, method_name: str, function: Callable) -> 'SampleGenerator':
         """
-        Adds to the generated sample class a generic function as a class method.
+        Adds a method to the generated sample class.
         Remember that the function's signature must have at least one parameter (self).
-        Annotate your customized function with type hints and docstring: these information are reported in the stub file.
-        Remember to annotate the function with the synchronize_on_field decorator to ensure the 'thread safe' condition
-        and pipeline checking on the fields that the method uses.
-        :raise MethodAlreadyExistsException: if the method name already exists
+        Annotate your customized function with type hints and docstring: this information is reported in the stub file.
+        Remember to annotate the function with the synchronize_on_fields decorator to ensure the "thread-safe" condition.
+        :raise MethodAlreadyExistsException if the method name already exists
         :param method_name: the name of the method
         :type method_name: str
-        :param function: the function to add as class method
+        :param function: the function to add as an instance method
         :type function: Callable
         :return: the sample generator instance
         :rtype: SampleGenerator
@@ -197,7 +195,7 @@ class SampleGenerator:
 
     def generate_sample_class(self) -> Type['GeneratedSampleClass']:
         """
-        Generates the sample class.
+        Generates the sample class according to the programmer configuration.
         :return: the sample class definition
         """
         class MetaSample(ABCMeta):
@@ -283,11 +281,11 @@ class SampleGenerator:
             """
             Sets "{0}" parameter.
             If the field is an numpy.ndarray and it has an active pipeline, an exception is raised.
-            :raises FieldHasIncorrectTypeException: if the given value has a wrong type
-            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before setting a new value
+            :raise FieldHasIncorrectTypeException if the given value has a wrong type
+            :raise AnotherActivePipelineException if the field has an active pipeline (terminate it before setting a new value)
             :param value: the value to be assigned to {1}
             :type value: {2}
-            :return: the {3} object
+            :return: the {3} instance
             :rtype: {4}
             """
             if not isinstance(value, sample._field_types[field_name]):
@@ -305,9 +303,9 @@ class SampleGenerator:
         @synchronize_on_fields(field_names={field_name}, check_pipeline=True)
         def f(sample) -> field_type:
             """
-            Return "{0}" value.
-            If the field is an numpy.ndarray and it has an active pipeline, an exception is raised. Terminate it before get the fields value
-            :raises AnotherActivePipelineException: if the field has an active pipeline, terminate it before getting a new value
+            Returns "{0}" value.
+            If the field is an "numpy.ndarray" and it has an active pipeline, an exception is raised. Terminate it before obtain the fields value.
+            :raises AnotherActivePipelineException if the field has an active pipeline
             :return: the value of {1}
             :rtype: {2}
             """
@@ -325,9 +323,9 @@ class SampleGenerator:
             """
             Creates and returns a new pipeline to elaborate "{0}".
             The pipeline is correctly configured, the data to elaborate are "{1}"
-            and the pipeline results is set to "{2}".
+            and the pipeline result is set to "{2}".
             If there is another active pipeline for this field, it raises an AnotherActivePipelineException.
-            :raise AnotherActivePipelineException: if other pipeline of the fields are active
+            :raise AnotherActivePipelineException if other pipeline of the fields are active
             :return: a new pipeline instance which elaborates "{3}" and writes the result into "{4}"
             :rtype: DataPipeline
             """

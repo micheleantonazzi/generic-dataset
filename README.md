@@ -1,6 +1,6 @@
-# Generic dataset
-![](https://github.com/micheleantonazzi/generic-dataset/workflows/Build/badge.svg?branch=main)[
-![pypi](https://img.shields.io/pypi/v/generic-dataset.svg)](https://pypi.org/project/generic-dataset/)
+# Generic dataset manager
+![](https://github.com/micheleantonazzi/generic-dataset/workflows/Build/badge.svg?branch=main)
+[![pypi](https://img.shields.io/pypi/v/generic-dataset.svg)](https://pypi.org/project/generic-dataset/)
 [![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=coverage)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
 
 
@@ -11,7 +11,7 @@
 [![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=security_rating)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
 [![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=vulnerabilities)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
 
-This library is designed to support machine learning and data science programmers. In fact, they work with datasets, but each dataset is different from the others. 'generic-dataset' is a **configurable framework** which, with a few lines of code, generates automatically the code and the necessary classes to manage a dataset of any kind. This is possible using the **metaprogramming paradigm**. In addition, it also offers useful utility to manipulate *numpy arrays*. This utility builds a pipeline (a series of operations to modify an array) which can also be easily run on **GPU** without modifying the code. For this reason, this library is particularly suitable for image datasets.
+This is a **configurable framework** that generates automatically the code and the necessary classes to manage a dataset of any kind. This is possible using the **metaprogramming paradigm**. The programmer can create his own dataset manager according to his needs. In addition, it also offers useful utility to manipulate *numpy arrays*. This utility builds a pipeline (a series of operations to modify an array) which can also be easily run on **GPU** without modifying the code. For this reason, this library is particularly suitable for **image datasets** or for those datasets that massively use numpy arrays. Since that the code generated at run-time suffers from the lack of type hints and auto-completion features, stub files can be automatically created using the [stub-generator package](https://github.com/micheleantonazzi/python-stub-runtime-generator).
 
 ## Installation
 

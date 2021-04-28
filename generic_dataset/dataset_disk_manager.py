@@ -11,29 +11,30 @@ from generic_dataset.generic_sample import GenericSample
 
 class DatasetDiskManager:
     """
-    This class manages storage and loading of the data from disk.
+    This class manages the persistence of the dataset.
     It automatically creates the dataset saving directory according to the label and the fields of the generated sample class.
     DatasetDiskManager can automatically handle any generated sample class, created by SampleGenerator.
-    DatasetDiskManager, inside constructor, automatically creates the folder tree where save the samples.
-    At the beginning, it creates the dataset main folder.
-    Inside it, the samples are divided into several "folders" (they can represent different procedures to acquire the data or different data categories).
+    DatasetDiskManager, inside its constructor, automatically creates the folder tree where save the samples.
+    In the beginning, it creates the dataset main folder.
+    Inside it, the samples are divided into several directories (they can represent different procedures to acquire the data or different data categories).
     Subsequently, samples are divided according to their labels: if samples model a classification problem, a folder for each possible label is created
     and the samples are saved inside the correspondent one.
-    This means that the sample label is based on the folder it is saved.
-    Otherwise, for a regression problem, the samples are simply saved all together and the sample labels are saved within files as generic fields.
+    This means that the sample label is based on the folder in which it is saved.
+    Otherwise, for a regression problem, the samples are simply stored all together and the sample labels are saved within files as generic fields.
     Finally, the samples are saved grouping fields in dedicated directories (so a folder for each field is created).
     Inside these folders, the data are ordered with respect to the sample they belong to.
     The files are called as follow: {field_name}_sample_{c}_({n}) where:
         - p = 'positive' or 'negative'
         - c = the progressive count of the sample inside its category (depending on label)
         - n = the sample absolute progressive count
+    Remember that for a regression task, all samples are saved in the same directory, so the relative and the absolute count of a sample are equal.
     """
 
     def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample]):
         """
         Instantiates a new instance of DatasetDiskManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
-        :raise FileNotFoundError: if the dataset path does not exists
+        :raise FileNotFoundError if the dataset path does not exist.
         :param dataset_path: the absolute path where to create the dataset root folder. This path incorporates the dataset root folder name: path/to/dataset/dataset_root_folder_name
         :type dataset_path: str
         :param folder_name: the folder name
@@ -53,13 +54,13 @@ class DatasetDiskManager:
 
     def get_sample_total_amount(self, label: int) -> int:
         """
-        Returns the number of sample with the given label in the current folder.
-        If the a regression problem is modelled (so the label is a real number), this methods returns the total amount of the samples
-        :raise KeyError: if the label does not exists
-        :param label: the label of the samples to get the total amount
-        :type label: int
-        :return: the number of samples.
-        :rtype: int
+            Returns the number of samples with the given label in the current folder.
+            If a regression problem is modeled (so the label is a real number), this methods returns the total amount of the samples.
+            :raise KeyError if the label does not exist
+            :param label: the label of the samples to get the total amount
+            :type label: int
+            :return: the number of samples.
+            :rtype: int
         """
         with self._lock:
             if self._sample_class.GET_LABEL_SET():
@@ -69,10 +70,11 @@ class DatasetDiskManager:
 
     def get_samples_absolute_count(self, label: int) -> List[int]:
         """
-        Returns the absolute count of the samples with the given label, sorted according to their category order.
-        The return value is a list with length equal to the number of sample with the given label, each cell contains an integer: the absloute count of the i-th sample.
-        If the a regression problem is modelled (so the label is a real number), this methods returns a list such that list[i] = i
-        :raise KeyError: if the label does not exists
+        Returns the absolute count of the samples with the given label, sorted according to their order.
+        The return value is a list with length equal to the number of sample with the given label.
+        Each cell contains an integer: the absolute count of the i-th sample.
+        If the a regression problem is modelled (so the label is a real number), this methods returns a list such that list[i] = i beacuse all samples are stored together
+        :raise KeyError if the label does not exist
         :return: a list with the samples absolute counts
         :rtype: List[int]
         """
@@ -88,7 +90,7 @@ class DatasetDiskManager:
         The return value is a list of tuples (Tuple[int, int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:
             - tuple[0]: int = the sample's label
             - tuple[1]: the sample count inside its category (depending on its label)
-        If the a regression problem is modelled (so the label is a real number), this methods returns a list of tuple, where list[i] =
+        If a regression task is modelled (so the label is a real number), this methods returns a list of tuple, where list[i] =
             - tuple[0] = 0 (fake label)
             - tuple[1] = i
         :return: a list containing all samples information
@@ -100,7 +102,7 @@ class DatasetDiskManager:
     def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[GenericSample, Future]:
         """
         Saves to disk the given sample.
-        :raise TypeError: if the sample has a wrong type
+        :raise TypeError if the sample has a wrong type
         :param sample: the sample to save
         :param use_thread: if True, this method saves files in a separate thread
         :return: it use_thread is True, returns the future in which the fields is saved (the future returns the saved sample)
@@ -141,8 +143,7 @@ class DatasetDiskManager:
         :type absolute_count: int
         :param use_thread: if True, the loading procedure is executed in a separate thread
         :type use_thread: bool
-        :return: the loaded sample if the use_thread is False, otherwise the Future where the loading operation is performed
-                    (the future returns the loaded sample)
+        :return: the loaded sample if the use_thread is False, otherwise the Future where the loading operation is performed (the result() method returns the loaded sample)
         :rtype: Union[GenericSample, Future]
         """
         with self._lock:
@@ -166,8 +167,8 @@ class DatasetDiskManager:
 
     def load_sample_using_relative_count(self, label: int, relative_count: int, use_thread: bool) -> Union[GenericSample, Future]:
         """
-        Loads the sample that has the given relative count with respect to its category (positive or negative).
-        If a regression problem is modelled, the label is ignored and the relative count coincides with the absolute count.
+        Loads the sample that has the given relative count with respect to its label.
+        If a regression problem is modeled, the label is ignored and the relative count coincides with the absolute count.
         :param label: the label of the sample to load
         :param relative_count: the sample's relative count
         :return: the loaded sample if use_thread is false, otherwise a future which returns the loaded sample when the procedure is completed
@@ -182,7 +183,7 @@ class DatasetDiskManager:
                 sample_label = 0.0
 
         function = self._save_or_load_sample(
-            sample=self._sample_class(sample_label),
+            sample=self._sample_class(label=sample_label),
             save_or_load='load',
             absolute_count=absolute_count,
             relative_count=relative_count)
