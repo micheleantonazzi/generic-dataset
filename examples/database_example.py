@@ -30,7 +30,9 @@ database.save_sample(generated_sample_2, use_thread=False)
 
 # Load samples using relative count (it depends on their label)
 for (label, relative_count) in database.get_absolute_samples_information():
-    sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
+    future = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=True)
+    sample = future.result()
+    print(sample.get_label())
 
 # Load sample using absolute count
 sample = database.load_sample_using_absolute_count(absolute_count=2, use_thread=False)
