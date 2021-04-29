@@ -157,7 +157,7 @@ def test_load_sample_classification():
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
     order = [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
-    for i, (label, count) in zip(range(len(order)), order):
+    for i, (label, count) in enumerate(order):
         thread = not thread
         sample = dataset.load_sample_using_relative_count(label=label, relative_count=count, use_thread=thread)
         if thread:
@@ -180,7 +180,7 @@ def test_load_sample_regression():
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
     order = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
-    for i, (label, count) in zip(range(len(order)), order):
+    for i, (label, count) in enumerate(order):
         thread = not thread
         sample = dataset.load_sample_using_relative_count(label=label, relative_count=count, use_thread=thread)
         if thread:
