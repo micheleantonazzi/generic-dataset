@@ -136,15 +136,19 @@ class DataPipeline:
         # and restore data from GPU (after executing the pipeline) is mandatory
         if self._use_gpu:
             self._cuda_stream = engine.cuda.Stream(null=False, non_blocking=True)
-            self._cuda_stream.use()
-            self._data = engine.asarray(self._data)
             # Transfer data from device at the end of the pipeline
             self._operations.put(lambda data, engine: (engine.asnumpy(data, stream=self._cuda_stream), engine))
 
         ret = self._data
-        for operation in self._operations.queue:
 
-            ret, engine = operation(ret, engine)
+        if self._use_gpu:
+            with self._cuda_stream:
+                ret = engine.asarray(ret)
+                for operation in self._operations.queue:
+                    ret, engine = operation(ret, engine)
+        else:
+            for operation in self._operations.queue:
+                ret, engine = operation(ret, engine)
 
         self._data = ret
 
