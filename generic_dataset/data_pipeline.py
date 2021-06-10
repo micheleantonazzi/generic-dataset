@@ -196,4 +196,4 @@ class DataPipeline:
         if self._is_run:
             raise PipelineAlreadyRunException()
 
-        return self._operations
+        return copy.deepcopy(self._operations)
