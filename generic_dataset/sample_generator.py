@@ -1,3 +1,4 @@
+import copy
 import os
 from abc import ABCMeta
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn, Type
@@ -339,7 +340,7 @@ class SampleGenerator:
 
             pipeline_configured = DataPipeline().set_data(sample._field_values[elaborated_field]).set_end_function(assign)
             if operations != None:
-                pipeline_configured.set_operations(operations)
+                pipeline_configured.set_operations(copy.deepcopy(operations))
             for field in fields:
                 sample._pipelines[field] = pipeline_configured
 
