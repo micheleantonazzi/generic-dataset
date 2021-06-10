@@ -20,7 +20,7 @@ pipeline_field_1_2 = DataPipeline().add_operation(lambda data, engine: (engine.a
 GeneratedSample = SampleGenerator(name='GeneratedSample', label_set={0, 1})\
     .add_dataset_field(field_name='field_1', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
     .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array)\
-    .add_field(field_name='field_3', field_type=np.ndarray) \
+    .add_field(field_name='field_3', field_type=np.ndarray, default_value=np.array([1, 1])) \
     .add_custom_pipeline(method_name='pipeline_field_1_2', elaborated_field='field_1', final_field='field_2', pipeline=pipeline_field_1_2)\
     .generate_sample_class()
 
@@ -37,6 +37,10 @@ def test_getter_exists(use_gpu: bool = False):
 
 
 def test_setter_getter(use_gpu: bool = False):
+    sample = GeneratedSample(label=1)
+    assert np.array_equal(sample.get_field_3(), np.array([1, 1]))
+
+
     sample = GeneratedSample(label=1).set_field_1(np.array([1]))
     assert np.array_equal(np.array([1]), sample.get_field_1())
 
