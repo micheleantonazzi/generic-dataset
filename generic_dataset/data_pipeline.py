@@ -52,7 +52,7 @@ class DataPipeline:
         self._data = None
         self._use_gpu = False
         self._end_function = None
-        self._operations = queue.Queue()
+        self._operations = []
         self._is_run = False
         self._cuda_stream = None
 
@@ -104,7 +104,7 @@ class DataPipeline:
         if self._is_run:
             raise PipelineAlreadyRunException()
 
-        self._operations.put(operation)
+        self._operations.append(operation)
         return self
 
     def run(self, use_gpu: bool) -> 'DataPipeline':
@@ -137,17 +137,17 @@ class DataPipeline:
         if self._use_gpu:
             self._cuda_stream = engine.cuda.Stream(null=False, non_blocking=True)
             # Transfer data from device at the end of the pipeline
-            self._operations.put(lambda data, engine: (engine.asnumpy(data, stream=self._cuda_stream), engine))
+            self._operations.append(lambda data, engine: (engine.asnumpy(data, stream=self._cuda_stream), engine))
 
         ret = self._data
 
         if self._use_gpu:
             with self._cuda_stream:
                 ret = engine.asarray(ret)
-                for operation in self._operations.queue:
+                for operation in self._operations:
                     ret, engine = operation(ret, engine)
         else:
-            for operation in self._operations.queue:
+            for operation in self._operations:
                 ret, engine = operation(ret, engine)
 
         self._data = ret
@@ -172,7 +172,7 @@ class DataPipeline:
 
         return ret
 
-    def set_operations(self, operations: queue.Queue) -> 'DataPipeline':
+    def set_operations(self, operations: list) -> 'DataPipeline':
         """
         Replaces the operations queue with the input one.
         :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot set the operation queue of a run pipeline
@@ -187,7 +187,7 @@ class DataPipeline:
         self._operations = operations
         return self
 
-    def get_operations(self) -> queue.Queue:
+    def get_operations(self) -> list:
         """
         Returns a copy of the queue containing the pipeline operations.
         :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot get the operation queue of a run pipeline

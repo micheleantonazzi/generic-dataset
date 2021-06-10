@@ -55,17 +55,17 @@ def test_get_data(use_gpu: bool = False):
 def test_pipeline_operation(use_gpu: bool = False):
     pipeline = DataPipeline().set_data(np.array([])).set_end_function(lambda d:d)
 
-    assert pipeline.get_operations().qsize() == 0
+    assert len(pipeline.get_operations()) == 0
 
     pipeline.add_operation(operation=lambda data, engine: (data, engine))
 
-    assert pipeline.get_operations().qsize() == 1
+    assert len(pipeline.get_operations())== 1
 
     pipeline.add_operation(operation=lambda data, engine: (engine.array([0]), engine))
 
     pipeline2 = DataPipeline().set_data(data=np.array([1])).set_end_function(lambda d:d).set_operations(pipeline.get_operations())
 
-    assert pipeline.get_operations().qsize() == pipeline2.get_operations().qsize()
+    assert len(pipeline.get_operations()) == len(pipeline2.get_operations())
 
     assert np.array_equal(pipeline2.run(use_gpu=use_gpu).get_data(), pipeline.run(use_gpu=use_gpu).get_data())
 

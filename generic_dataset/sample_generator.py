@@ -1,5 +1,4 @@
 import os
-import queue
 from abc import ABCMeta
 from typing import Dict, Any, Union, Set, TypeVar, Callable, NoReturn, Type
 import numpy as np
@@ -315,7 +314,7 @@ class SampleGenerator:
 
         return f
 
-    def _create_add_pipeline_method(self, elaborated_field: str, final_field: str, operations: queue.Queue = None):
+    def _create_add_pipeline_method(self, elaborated_field: str, final_field: str, operations: list = None):
         fields = {elaborated_field, final_field}
 
         @synchronize_on_fields(field_names=fields, check_pipeline=True)
@@ -339,7 +338,7 @@ class SampleGenerator:
                 return data
 
             pipeline_configured = DataPipeline().set_data(sample._field_values[elaborated_field]).set_end_function(assign)
-            if operations !=  None:
+            if operations != None:
                 pipeline_configured.set_operations(operations)
             for field in fields:
                 sample._pipelines[field] = pipeline_configured
