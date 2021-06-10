@@ -1,5 +1,4 @@
 import copy
-import queue
 from typing import Callable
 
 import numpy as np
@@ -174,10 +173,10 @@ class DataPipeline:
 
     def set_operations(self, operations: list) -> 'DataPipeline':
         """
-        Replaces the operations queue with the input one.
-        :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot set the operation queue of a run pipeline
-        :param operations: the queue with the operations
-        :type operations: Queue
+        Replaces the operations list with the input one.
+        :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot set the operation list of a run pipeline
+        :param operations: the list with the operations
+        :type operations: List
         :return: the pipeline instance
         :rtype: DataPipeline
         """
@@ -189,13 +188,12 @@ class DataPipeline:
 
     def get_operations(self) -> list:
         """
-        Returns a copy of the queue containing the pipeline operations.
-        :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot get the operation queue of a run pipeline
-        :return: the queue with the operations
-        :rtype: Queue
+        Returns a copy of the list containing the pipeline operations.
+        :raise PipelineAlreadyRunException if the pipeline has been already run. You cannot get the operation list of a run pipeline
+        :return: the list with the operations
+        :rtype: list
         """
         if self._is_run:
             raise PipelineAlreadyRunException()
 
-        operation = copy.copy(self._operations)
-        return operation
+        return self._operations

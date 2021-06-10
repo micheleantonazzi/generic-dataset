@@ -1,5 +1,3 @@
-import queue
-
 import numpy as np
 import cv2
 import os
@@ -76,7 +74,7 @@ def test_pipeline_operation(use_gpu: bool = False):
         pipeline2.add_operation(lambda d, e: (d, e))
 
     with pytest.raises(PipelineAlreadyRunException):
-        pipeline2.set_operations(queue.Queue())
+        pipeline2.set_operations([])
 
 
 def test_pipeline_bgr_to_rgb(use_gpu=False):
