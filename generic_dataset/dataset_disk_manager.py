@@ -30,7 +30,7 @@ class DatasetDiskManager:
     Remember that for a regression task, all samples are saved in the same directory, so the relative and the absolute count of a sample are equal.
     """
 
-    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample]):
+    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], max_tread: int = 4):
         """
         Instantiates a new instance of DatasetDiskManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
@@ -41,6 +41,7 @@ class DatasetDiskManager:
         :type folder_name: str
         :param sample_class: the sample class to save and load from disk
         :type sample_class: type
+        :param max_tread: the max number of worker used by thread pool
         """
         self._dataset_path = dataset_path
         self._folder_name = folder_name
@@ -48,7 +49,7 @@ class DatasetDiskManager:
 
         self._set_up_folders()
         self._lock = threading.Lock()
-        self._pool = ThreadPoolExecutor(max_workers=8)
+        self._pool = ThreadPoolExecutor(max_workers=max_tread)
 
         self._get_sample_counts()
 

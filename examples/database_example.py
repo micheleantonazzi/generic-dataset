@@ -21,7 +21,7 @@ generated_sample_1.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_d
 generated_sample_2.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_data()
 
 
-database = DatasetDiskManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+database = DatasetDiskManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, max_tread=8)
 
 # Save samples
 database.save_sample(generated_sample_0, use_thread=False)
