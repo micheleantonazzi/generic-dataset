@@ -34,8 +34,8 @@ def test_save_load_dictionary():
     d = {'field1': 1.1, 'field2': 'Hi', 'field3': [0, 1, 2]}
     path = os.path.join(test_methods_path, 'dictionary')
 
-    slm.save_dictionary_compressed(path, d)
-    d_loaded = slm.load_dictionary_compressed(path)
+    slm.save_compressed_dictionary(path, d)
+    d_loaded = slm.load_compressed_dictionary(path)
 
     assert d_loaded == d
 

@@ -27,12 +27,12 @@ def load_cv2_image(path: str) -> np.ndarray:
     return cv2.imread(path + '.png')
 
 
-def save_dictionary_compressed(path: str, data: Dict) -> NoReturn:
+def save_compressed_dictionary(path: str, data: Dict) -> NoReturn:
     with gzip.open(path + '.tar.gz', mode='w') as file:
         file.write(json.dumps(data).encode('utf-8'))
 
 
-def load_dictionary_compressed(path: str) -> Dict:
+def load_compressed_dictionary(path: str) -> Dict:
     with gzip.open(path + '.tar.gz', mode='r') as file:
         return json.loads(file.read().decode('utf-8'))
 
