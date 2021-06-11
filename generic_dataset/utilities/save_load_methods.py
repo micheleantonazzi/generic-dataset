@@ -19,12 +19,16 @@ def load_float(path: str) -> float:
         return float(file.readline())
 
 
-def save_cv2_image(path: str, data: np.ndarray) -> NoReturn:
+def save_cv2_image_bgr(path: str, data: np.ndarray) -> NoReturn:
     cv2.imwrite(path + '.png', data)
 
 
-def load_cv2_image(path: str) -> np.ndarray:
+def load_cv2_image_bgr(path: str) -> np.ndarray:
     return cv2.imread(path + '.png')
+
+
+def load_cv2_image_grayscale(path: str) -> np.ndarray:
+    return cv2.imread(path + '.png', cv2.IMREAD_GRAYSCALE)
 
 
 def save_compressed_dictionary(path: str, data: Dict) -> NoReturn:

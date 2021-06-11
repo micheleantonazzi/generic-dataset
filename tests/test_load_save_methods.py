@@ -24,10 +24,14 @@ def test_cv2_save_load_methods():
     image = np.array([55 for _ in range(256*256*3)]).reshape((256, 256, 3))
     path = os.path.join(test_methods_path, 'image_cv2')
 
-    slm.save_cv2_image(path=path, data=image)
-    loaded_image = slm.load_cv2_image(path)
+    slm.save_cv2_image_bgr(path=path, data=image)
+    loaded_image = slm.load_cv2_image_bgr(path)
 
     assert np.array_equal(loaded_image, image)
+
+    loaded_image_grayscale = slm.load_cv2_image_grayscale(path)
+
+    assert len(loaded_image_grayscale.shape) == 2
 
 
 def test_save_load_dictionary():
