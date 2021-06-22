@@ -53,7 +53,7 @@ class DatasetDiskManager:
 
         self._get_sample_counts()
 
-    def get_sample_total_amount(self, label: int) -> int:
+    def get_sample_count_in_folder(self, label: int) -> int:
         """
             Returns the number of samples with the given label in the current folder.
             If a regression problem is modeled (so the label is a real number), this methods returns the total amount of the samples.
@@ -69,9 +69,35 @@ class DatasetDiskManager:
             else:
                 return len(self._absolute_samples_information)
 
-    def get_samples_absolute_count(self, label: int) -> List[int]:
+    def get_total_sample_counts(self) -> Union[int, Dict[int, int]]:
         """
-        Returns the absolute count of the samples with the given label, sorted according to their order.
+        Returns the total sample counts for each label in the entire dataset.
+        If the dataset models a regression problem, the
+        :return: for a classification problem, returns a dict containing the sample counts (dict values) for each label (dict keys).
+                 for a regression problem, returns the total number of sample
+        :rtype: Union[Dict[int, int], int]
+        """
+        with self._lock:
+            if self._sample_class.GET_LABEL_SET():
+                total = {label: 0 for label in self._sample_class.GET_LABEL_SET()}
+                for folder in os.listdir(self._dataset_path):
+                    temp = DatasetDiskManager(dataset_path=self._dataset_path, folder_name=folder, sample_class=self._sample_class)
+
+                    for label in self._sample_class.GET_LABEL_SET():
+                        total[label] += temp.get_sample_count_in_folder(label=label)
+
+                return total
+            else:
+                total = 0
+                for folder in os.listdir(self._dataset_path):
+                    temp = DatasetDiskManager(dataset_path=self._dataset_path, folder_name=folder, sample_class=self._sample_class)
+                    total += temp.get_sample_count_in_folder(label=0)
+
+                return total
+
+    def get_samples_absolute_counts(self, label: int) -> List[int]:
+        """
+        Returns the absolute counts of the samples with the given label, sorted according to their order.
         The return value is a list with length equal to the number of sample with the given label.
         Each cell contains an integer: the absolute count of the i-th sample.
         If the a regression problem is modelled (so the label is a real number), this methods returns a list such that list[i] = i beacuse all samples are stored together

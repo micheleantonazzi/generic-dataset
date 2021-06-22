@@ -70,5 +70,7 @@ assert sample.get_label() == 0.2
 sample = database.load_sample_using_relative_count(label=3, relative_count=2, use_thread=False)
 assert sample.get_label() == 0.2
 
+print('There are {0} samples with label 3'.format(database.get_sample_count_in_folder(label=3)))
+
 
 

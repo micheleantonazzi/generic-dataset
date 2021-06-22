@@ -25,9 +25,12 @@ GeneratedSampleRegression = SampleGenerator(name='GeneratedSample', label_set=se
     .add_custom_pipeline(method_name='pipeline_field_1_2', elaborated_field='field_1', final_field='field_2', pipeline=pipeline_field_1_2) \
     .generate_sample_class()
 
-path = os.path.join(os.path.dirname(__file__), 'dataset_folder')
+path_classification = os.path.join(os.path.dirname(__file__), 'dataset_classification_folder')
+path_regression = os.path.join(os.path.dirname(__file__), 'dataset_regression_folder')
 
-shutil.rmtree(path, ignore_errors=True)
+shutil.rmtree(path_classification, ignore_errors=True)
+shutil.rmtree(path_regression, ignore_errors=True)
+
 
 
 def test_constructor():
@@ -37,33 +40,33 @@ def test_constructor():
     with pytest.raises(FileNotFoundError):
         DatasetDiskManager(dataset_path='random_path', folder_name='folder', sample_class=GeneratedSampleRegression)
 
-    DatasetDiskManager(dataset_path=path, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
-    DatasetDiskManager(dataset_path=path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
+    DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
 
 def test_count_samples():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample_class=GeneratedSampleClassification)
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder', sample_class=GeneratedSampleClassification)
 
-    assert dataset.get_sample_total_amount(0) == 0
-    assert dataset.get_sample_total_amount(1) == 0
-    assert len(dataset.get_samples_absolute_count(0)) == 0
-    assert len(dataset.get_samples_absolute_count(1)) == 0
+    assert dataset.get_sample_count_in_folder(0) == 0
+    assert dataset.get_sample_count_in_folder(1) == 0
+    assert len(dataset.get_samples_absolute_counts(0)) == 0
+    assert len(dataset.get_samples_absolute_counts(1)) == 0
 
     with pytest.raises(KeyError):
-        dataset.get_samples_absolute_count(2)
+        dataset.get_samples_absolute_counts(2)
     with pytest.raises(KeyError):
-        dataset.get_sample_total_amount(2)
+        dataset.get_sample_count_in_folder(2)
 
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder', sample_class=GeneratedSampleRegression)
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder', sample_class=GeneratedSampleRegression)
 
-    assert dataset.get_sample_total_amount(label=0) == 0
-    assert dataset.get_sample_total_amount(label=1) == 0
-    assert len(dataset.get_samples_absolute_count(label=0)) == 0
-    dataset.get_sample_total_amount(2)
+    assert dataset.get_sample_count_in_folder(label=0) == 0
+    assert dataset.get_sample_count_in_folder(label=1) == 0
+    assert len(dataset.get_samples_absolute_counts(label=0)) == 0
+    dataset.get_sample_count_in_folder(2)
 
 
 def test_save_fields_classification():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
     with pytest.raises(TypeError):
         dataset.save_sample(GeneratedSampleRegression(label=1.1), False)
@@ -83,16 +86,16 @@ def test_save_fields_classification():
     sample = GeneratedSampleClassification(label=0).set_field_1(np.array([4.1 for _ in range(10000)])).set_field_2(np.array([4.2 for _ in range(10000)]))
     dataset.save_sample(sample, True).result()
 
-    assert dataset.get_sample_total_amount(label=0) == 3
-    assert dataset.get_sample_total_amount(label=1) == 2
+    assert dataset.get_sample_count_in_folder(label=0) == 3
+    assert dataset.get_sample_count_in_folder(label=1) == 2
 
-    assert dataset.get_samples_absolute_count(label=0) == [0, 2, 4]
-    assert dataset.get_samples_absolute_count(label=1) == [1, 3]
+    assert dataset.get_samples_absolute_counts(label=0) == [0, 2, 4]
+    assert dataset.get_samples_absolute_counts(label=1) == [1, 3]
     assert dataset.get_absolute_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
 
 
 def test_save_fields_regression():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
     with pytest.raises(TypeError):
         dataset.save_sample(GeneratedSampleClassification(label=1), False)
@@ -112,40 +115,40 @@ def test_save_fields_regression():
     sample = GeneratedSampleRegression(label=.0).set_field_1(np.array([4.1 for _ in range(10000)])).set_field_2(np.array([4.2 for _ in range(10000)]))
     dataset.save_sample(sample, True).result()
 
-    assert dataset.get_sample_total_amount(label=0) == 5
-    assert dataset.get_sample_total_amount(label=1) == 5
-    dataset.get_sample_total_amount(label=2)
+    assert dataset.get_sample_count_in_folder(label=0) == 5
+    assert dataset.get_sample_count_in_folder(label=1) == 5
+    dataset.get_sample_count_in_folder(label=2)
 
-    assert dataset.get_samples_absolute_count(label=0) == [0, 1, 2, 3, 4]
-    assert dataset.get_samples_absolute_count(label=1) == [0, 1, 2, 3, 4]
+    assert dataset.get_samples_absolute_counts(label=0) == [0, 1, 2, 3, 4]
+    assert dataset.get_samples_absolute_counts(label=1) == [0, 1, 2, 3, 4]
     assert dataset.get_absolute_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
 
 
 def test_sample_information():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
-    assert dataset.get_sample_total_amount(0) == 3
-    assert dataset.get_samples_absolute_count(0) == [0, 2, 4]
-    assert dataset.get_sample_total_amount(1) == 2
-    assert dataset.get_samples_absolute_count(1) == [1, 3]
+    assert dataset.get_sample_count_in_folder(0) == 3
+    assert dataset.get_samples_absolute_counts(0) == [0, 2, 4]
+    assert dataset.get_sample_count_in_folder(1) == 2
+    assert dataset.get_samples_absolute_counts(1) == [1, 3]
     with pytest.raises(KeyError):
-        dataset.get_samples_absolute_count(2)
+        dataset.get_samples_absolute_counts(2)
 
     assert dataset.get_absolute_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
 
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
-    assert dataset.get_sample_total_amount(0) == 5
-    assert dataset.get_samples_absolute_count(0) == [0, 1, 2, 3, 4]
-    assert dataset.get_sample_total_amount(1) == 5
-    assert dataset.get_samples_absolute_count(1) == [0, 1, 2, 3, 4]
-    dataset.get_samples_absolute_count(2)
+    assert dataset.get_sample_count_in_folder(0) == 5
+    assert dataset.get_samples_absolute_counts(0) == [0, 1, 2, 3, 4]
+    assert dataset.get_sample_count_in_folder(1) == 5
+    assert dataset.get_samples_absolute_counts(1) == [0, 1, 2, 3, 4]
+    dataset.get_samples_absolute_counts(2)
 
     assert dataset.get_absolute_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
 
 
 def test_load_sample_classification():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
     thread = False
 
     for i in range(len(dataset.get_absolute_samples_information())):
@@ -168,7 +171,7 @@ def test_load_sample_classification():
 
 
 def test_load_sample_regression():
-    dataset = DatasetDiskManager(dataset_path=path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
     thread = False
 
     for i in range(len(dataset.get_absolute_samples_information())):
@@ -189,3 +192,20 @@ def test_load_sample_regression():
         assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
 
+def test_total_sample_counts():
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder', sample_class=GeneratedSampleClassification)
+    sample = GeneratedSampleClassification(label=0).set_field_1(np.array([0.1 for _ in range(10000)])).set_field_2(np.array([0.2 for _ in range(10000)]))
+    dataset.save_sample(sample, False)
+    dataset.save_sample(sample, False)
+
+    sample = GeneratedSampleClassification(label=1).set_field_1(np.array([1.1 for _ in range(10000)])).set_field_2(np.array([1.2 for _ in range(10000)]))
+    dataset.save_sample(sample, True).result()
+
+    assert dataset.get_total_sample_counts() == {0: 5, 1: 3}
+
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder', sample_class=GeneratedSampleRegression)
+    sample = GeneratedSampleRegression(label=.0).set_field_1(np.array([0.1 for _ in range(10000)])).set_field_2(np.array([0.2 for _ in range(10000)]))
+    dataset.save_sample(sample, False)
+    dataset.save_sample(sample, False)
+
+    assert dataset.get_total_sample_counts() == 7
