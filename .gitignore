@@ -1,5 +1,7 @@
 test_folder_save_load_methods/
-dataset_folder/
+examples/dataset_folder
+tests/dataset_classification_folder
+tests/dataset_regression_folder
 *.pyi
 .idea/
 # Byte-compiled / optimized / DLL files
