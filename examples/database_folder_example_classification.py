@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from generic_dataset.dataset_disk_manager import DatasetDiskManager
+from generic_dataset.dataset_folder_manager import DatasetFolderManager
 from examples.generated_sample_classification import GeneratedSampleClassification
 import numpy as np
 
@@ -20,7 +20,7 @@ generated_sample_1.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_d
 generated_sample_2.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_data()
 
 
-database = DatasetDiskManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=False, max_treads=8)
+database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=False, max_treads=8)
 
 # Save samples
 database.save_sample(generated_sample_0, use_thread=False)
@@ -39,13 +39,8 @@ assert sample.get_label() == 2
 
 print('There are {0} samples with label 2'.format(database.get_sample_count_in_folder(label=2)))
 
-# Display dataset information
-print('The total amount of sample per labels are:')
-for label, count in database.get_total_sample_counts().items():
-    print(' - label {0} -> {1} samples'.format(label, count))
-
 # Save folder metadata to file
 database.save_metadata()
 
 # The metadata are loaded from file
-loaded_database = DatasetDiskManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=True, max_treads=8)
+loaded_database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=True, max_treads=8)

@@ -41,7 +41,7 @@ To enable the GPU support, please install and configure CUDA Toolkit before inst
 This library is composed by three main entities: 
 
 * **SampleGenerator:** it is a configurable class that generates **sample classes** according to the programmers' needs. This means that the *sample class* is not apriori defined, but it is composed by *SampleGenerator* using the *metaprogramming paradigm*. The generated *sample classes* can model a *classification* or a *regression problem*, so the sample label could be an integer, which belongs to a discrete set, or a real number.  In addition to the label, a sample is characterized by fields (containing the sample data) and the operations to manipulate them.
-* **DatasetDiskManager:** this class is responsible for storing the dataset. It can work with any type of generated sample class.
+* **DatasetFolderManager:** this class is responsible for managing a dataset folder. It can work with any type of generated sample class.
 * **DataPipeline:** this entity defines an elaboration pipeline to manipulate numpy arrays. A pipeline can be executed in CPU or GPU.
 
 ### Sample class characteristics
@@ -70,7 +70,7 @@ sample.get_label() == 1
 
 #### How to add fields
 
-The programmer can also add fields that characterize the sample class, specifying their name and type. For each field, *SampleGenerator* automatically creates the getter and setter methods and a function that returns a *DataPipeline* to elaborate this field (only if the field is a numpy array). A field can belong to the dataset or not. If so, the field value is considered by *DatasetDiskManager* (which saves and loads it from disk), otherwise the field is ignored.
+The programmer can also add fields that characterize the sample class, specifying their name and type. For each field, *SampleGenerator* automatically creates the getter and setter methods and a function that returns a *DataPipeline* to elaborate this field (only if the field is a numpy array). A field can belong to the dataset or not. If so, the field value is considered by *DatasetFolderManager* (which saves and loads it from disk), otherwise the field is ignored.
 
 ```python
 from generic_dataset.sample_generator import SampleGenerator
@@ -142,9 +142,9 @@ generated.field_1_is_positive()
 
 As you can see, the function  *field_1_is_positive* is added as an instance method to the generated sample class: this method is called *field_1_is_positive()*. The function has been decorated to make the method thread-safe.
 
-### DatasetDiskManager
+### DatasetFolderManager
 
-*DatasetDiskManager* is responsible for storing and organizing the dataset on disk. It works using the methods provided by the super-type *GenericSample*. In this way, *DatasetDiskManager* can operate with all sample generated classes without any change. When it is instantiated, it automatically creates the dataset folder hierarchy (if it still doesn't exist). This hierarchy is organized as follows: inside the dataset main folder, another directory is created. It divides the dataset into many split, which could specify different data categories or different moments in which the data are collected. Then, if a classification problem is modeled, a folder is created for each value in the label set, so the samples are divided according to their label. Otherwise, in a regression task, the samples are saved altogether and the label is saved as a dataset field. Finally, samples are saved grouping their fields in the same directory. Inside these folders (one for each field), the files containing the field values are named as follow: ```{field_name}_{relative_count}_({absolute_count})```, where *relative count* is the sample count depending on its label while *absolute count* is the sample total count. In the case of regression task, these numbers are equal because the samples are not divided according to the label value. The final folder hierarchy is:
+*DatasetFolderManager* is responsible for storing and organizing the dataset on disk. It works using the methods provided by the super-type *GenericSample*. In this way, *DatasetFolderManager* can operate with all sample generated classes without any change. When it is instantiated, it automatically creates the dataset folder hierarchy (if it still doesn't exist). This hierarchy is organized as follows: inside the dataset main folder, another directory is created. It divides the dataset into many split, which could specify different data categories or different moments in which the data are collected. Then, if a classification problem is modeled, a folder is created for each value in the label set, so the samples are divided according to their label. Otherwise, in a regression task, the samples are saved altogether and the label is saved as a dataset field. Finally, samples are saved grouping their fields in the same directory. Inside these folders (one for each field), the files containing the field values are named as follow: ```{field_name}_{relative_count}_({absolute_count})```, where *relative count* is the sample count depending on its label while *absolute count* is the sample total count. In the case of regression task, these numbers are equal because the samples are not divided according to the label value. The final folder hierarchy is:
 
 ```
 dataset_main_folder (dir)
@@ -170,19 +170,22 @@ dataset_main_folder (dir)
 			- field_2_1_(1) (file)
 ```
 
-To save and load file samples, you can use the method provided by *DatabaseDiskManager*.
+To save and load file samples, you can use the method provided by *DatasetFolderManager*.
 
 ```python
-from generic_dataset.dataset_disk_manager import DatasetDiskManager
+from generic_dataset.dataset_folder_manager import DatasetFolderManager
 from generic_dataset.sample_generator import SampleGenerator
 import generic_dataset.utilities.save_load_methods as slm
 import numpy as np
 
-GeneratedSampleClass = SampleGenerator(name='GeneratedSampleClass', label_set={0, 1}).add_field('field_1', field_type=int) \
-    .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array) \
-    .generate_sample_class()
+GeneratedSampleClass = SampleGenerator(name='GeneratedSampleClass', label_set={0, 1}).add_field('field_1',
+                                                                                                field_type=int)
+.add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array,
+                   load_function=slm.load_compressed_numpy_array)
+.generate_sample_class()
 
-database = DatasetDiskManager(dataset_path='dataset_path', folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+database = DatasetFolderManager(dataset_path='dataset_path', folder_name='folder_classification',
+                                sample_class=GeneratedSampleClassification)
 
 sample = GeneratedSampleClass(label=0).set_field_1(np.array([0 for _ in range(1000)]))
 
@@ -192,33 +195,6 @@ database.save_sample(sample, use_thread=False)
 # Load sample
 for (label, relative_count) in database.get_absolute_samples_information():
     sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
-```
-
-Working with large datasets, reload file information from disk can be extremely slow. To solve this issue, the folder metadata (sample counts divided by their label and sample absolute counts) can be saved to disk.
-
-```python
-from generic_dataset.dataset_disk_manager import DatasetDiskManager
-from generic_dataset.sample_generator import SampleGenerator
-import generic_dataset.utilities.save_load_methods as slm
-import numpy as np
-
-GeneratedSampleClass = SampleGenerator(name='GeneratedSampleClass', label_set={0, 1}).add_field('field_1', field_type=int) \
-    .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array) \
-    .generate_sample_class()
-
-database = DatasetDiskManager(dataset_path='dataset_path', folder_name='folder_classification', load_metadata=True, sample_class=GeneratedSampleClassification)
-
-sample = GeneratedSampleClass(label=0).set_field_1(np.array([0 for _ in range(1000)]))
-
-# Save sample
-database.save_sample(sample, use_thread=False)
-
-# Load sample
-for (label, relative_count) in database.get_absolute_samples_information():
-    sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
-
-# Save the dataset metadata to disk
-database.save_metadata()
 ```
 
 ### DataPipeline

@@ -4,7 +4,7 @@ import shutil
 import numpy as np
 
 from examples.generated_sample_regression import GeneratedSampleRegression
-from generic_dataset.dataset_disk_manager import DatasetDiskManager
+from generic_dataset.dataset_folder_manager import DatasetFolderManager
 
 dataset_path = os.path.join(os.path.dirname(__file__), 'dataset_folder_regression')
 shutil.rmtree(path=dataset_path, ignore_errors=True)
@@ -19,7 +19,7 @@ generated_sample_0.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_d
 generated_sample_1.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_data()
 generated_sample_2.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_data()
 
-database = DatasetDiskManager(dataset_path=dataset_path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
+database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
 database.save_sample(generated_sample_0, use_thread=False)
 database.save_sample(generated_sample_1, use_thread=True)
@@ -38,7 +38,7 @@ sample = database.load_sample_using_relative_count(label=3, relative_count=2, us
 assert sample.get_label() == 0.2
 
 print('There are {0} samples in the dataset'.format(database.get_sample_count_in_folder(label=1)))
-print('There are {0} samples in the dataset'.format(database.get_total_sample_counts()))
+
 
 
 

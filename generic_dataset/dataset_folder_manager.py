@@ -13,10 +13,11 @@ class LabelNotFoundException(Exception):
     pass
 
 
-class DatasetDiskManager:
+class DatasetFolderManager:
     """
-    This class manages the persistence of the dataset.
-    It automatically creates the dataset saving directory according to the label and the fields of the generated sample class.
+    This class manages a dataset folder. This class can be used independently to DatasetManager class.
+    The dataset is divided into many folders, which may contain samples acquired in different situations or conditions.
+    It automatically creates a dataset folder according to the label and the fields of the generated sample class.
     DatasetDiskManager can automatically handle any generated sample class, created by SampleGenerator.
     DatasetDiskManager, inside its constructor, automatically creates the folder tree where save the samples.
     In the beginning, it creates the dataset main folder.
@@ -36,7 +37,7 @@ class DatasetDiskManager:
 
     def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], load_metadata: bool = False, max_treads: int = 4):
         """
-        Instantiates a new instance of DatasetDiskManager.
+        Instantiates a new instance of DatasetFolderManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
         :raise FileNotFoundError if the dataset path does not exist.
         :param dataset_path: the absolute path where to create the dataset root folder. This path incorporates the dataset root folder name: path/to/dataset/dataset_root_folder_name
@@ -100,32 +101,6 @@ class DatasetDiskManager:
                     raise LabelNotFoundException('The label {0} does not exists, the label set is {1}'.format(label, self._sample_class.GET_LABEL_SET()))
             else:
                 return len(self._absolute_samples_information)
-
-    def get_total_sample_counts(self) -> Union[int, Dict[int, int]]:
-        """
-        Returns the total sample counts for each label in the entire dataset.
-        If the dataset models a regression problem, the total example amount is returned
-        :return: for a classification problem, returns a dict containing the sample counts (dict values) for each label (dict keys).
-                 for a regression problem, returns the total number of sample
-        :rtype: Union[Dict[int, int], int]
-        """
-        with self._lock:
-            if self._sample_class.GET_LABEL_SET():
-                total = {label: 0 for label in self._sample_class.GET_LABEL_SET()}
-                for folder in os.listdir(self._dataset_path):
-                    temp = DatasetDiskManager(dataset_path=self._dataset_path, folder_name=folder, sample_class=self._sample_class)
-
-                    for label in self._sample_class.GET_LABEL_SET():
-                        total[label] += temp.get_sample_count_in_folder(label=label)
-
-                return total
-            else:
-                total = 0
-                for folder in os.listdir(self._dataset_path):
-                    temp = DatasetDiskManager(dataset_path=self._dataset_path, folder_name=folder, sample_class=self._sample_class)
-                    total += temp.get_sample_count_in_folder(label=0)
-
-                return total
 
     def save_metadata(self):
         """
