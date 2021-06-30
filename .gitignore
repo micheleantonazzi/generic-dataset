@@ -1,5 +1,6 @@
 test_folder_save_load_methods/
-examples/dataset_folder
+examples/dataset_folder_classification
+examples/dataset_folder_regression
 tests/dataset_classification_folder
 tests/dataset_regression_folder
 *.pyi
