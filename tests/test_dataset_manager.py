@@ -95,5 +95,5 @@ def test_sample_count():
     dataset_classification = DatasetManager(dataset_path=path_classification, sample_class=GeneratedSampleClassification, max_treads=8)
     dataset_regression = DatasetManager(dataset_path=path_regression, sample_class=GeneratedSampleRegression, max_treads=8)
 
-    assert dataset_classification.get_sample_count() == {0: 3, 1: 2}
-    assert dataset_regression.get_sample_count() == 5
+    assert dataset_classification.get_sample_count() == {0: 6, 1: 4}
+    assert dataset_regression.get_sample_count() == 10
