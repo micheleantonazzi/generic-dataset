@@ -1,12 +1,12 @@
 import os
 import re
 import threading
-from abc import ABCMeta
 from concurrent.futures._base import Future
-from typing import NoReturn, Union, Type, List, Tuple, Dict
+from typing import Union, Type, List, Tuple, Dict
 from concurrent.futures import ThreadPoolExecutor
 
 from generic_dataset.generic_sample import GenericSample
+import generic_dataset.utilities.save_load_methods as slm
 
 
 class LabelNotFoundException(Exception):
@@ -34,7 +34,7 @@ class DatasetDiskManager:
     Remember that for a regression task, all samples are saved in the same directory, so the relative and the absolute count of a sample are equal.
     """
 
-    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], max_treads: int = 4):
+    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], load_metadata: bool = False, max_treads: int = 4):
         """
         Instantiates a new instance of DatasetDiskManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
@@ -45,6 +45,8 @@ class DatasetDiskManager:
         :type folder_name: str
         :param sample_class: the sample class to save and load from disk
         :type sample_class: type
+        :param load_metadata: if it is true, the folder metadata are loaded from disk (if the relative file exists), otherwise the folder metadata are calculated examining the files
+        :type load_metadata: bool
         :param max_treads: the max number of worker used by thread pool
         """
         self._dataset_path = dataset_path
@@ -55,7 +57,30 @@ class DatasetDiskManager:
         self._lock = threading.Lock()
         self._pool = ThreadPoolExecutor(max_workers=max_treads)
 
-        self._get_sample_counts()
+        # For each label, contains a list of int, where:
+        # i = sample count in its category (depending on its label)
+        # list[i] = the absolute count of the i-th sample
+        # (Ignored for a regression problem)
+        self._label_counts: Dict[int, List[int]] = {}
+
+        # list[i] = tuple[int, int], which are the information about the sample with i as absolute count, where
+        #   - tuple[0] = contains the sample label
+        #   - tuple[1] = sample count relatives to its category (label)
+        # For a regression problem this list contains tuples where:
+        #   - tuple[0] = 0 (label)
+        #   - tuple[1] = sample absolute count
+        self._absolute_samples_information: List[Tuple[int, int]] = []
+
+        if load_metadata:
+            try:
+                metadata = slm.load_compressed_dictionary(os.path.join(self._dataset_path, self._folder_name, 'metadata'))
+                if self._sample_class.GET_LABEL_SET():
+                    self._label_counts = metadata['label_counts']
+                self._absolute_samples_information = metadata['absolute_samples_information']
+            except FileNotFoundError:
+                self._get_sample_counts()
+        else:
+            self._get_sample_counts()
 
     def get_sample_count_in_folder(self, label: int) -> int:
         """
@@ -101,6 +126,17 @@ class DatasetDiskManager:
                     total += temp.get_sample_count_in_folder(label=0)
 
                 return total
+
+    def save_metadata(self):
+        """
+        This method saves to file the metadata od the current folder (
+        :return:
+        """
+        if self._sample_class.GET_LABEL_SET():
+            metadata = {'label_counts': self._label_counts, 'absolute_samples_information': self._absolute_samples_information}
+        else:
+            metadata = {'absolute_samples_information': self._absolute_samples_information}
+        slm.save_compressed_dictionary(os.path.join(self._dataset_path, self._folder_name, 'metadata'), metadata)
 
     def get_samples_absolute_counts(self, label: int) -> List[int]:
         """
@@ -253,16 +289,6 @@ class DatasetDiskManager:
     def _get_sample_counts(self):
         label_set = self._sample_class.GET_LABEL_SET()
 
-        # For each label, contains a list of int, where:
-        # i = sample count in its category (depending on its label)
-        # list[i] = the absolute count of the i-th sample
-        self._label_counts: Dict[int, List[int]] = {}
-
-        # list[i] = tuple[int, int], which are the information about the sample with i as absolute count, where
-        #   - tuple[0] = contains the sample information label
-        #   - tuple[1] = sample count in its category (label)
-
-        self._absolute_samples_information: List[Tuple[int, int]] = []
         field = list(self._sample_class.GET_DATASET_FIELDS())[0]
         file_name_regexp = r'^(.+)_(\d+)_\((\d+)\).(.*)$'
         # If the label set is not empty, samples has a int label and the they are saved in different folders according to their labels

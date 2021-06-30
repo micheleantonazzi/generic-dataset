@@ -194,6 +194,33 @@ for (label, relative_count) in database.get_absolute_samples_information():
     sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
 ```
 
+Working with large datasets, reload file information from disk can be extremely slow. To solve this issue, the folder metadata (sample counts divided by their label and sample absolute counts) can be saved to disk.
+
+```python
+from generic_dataset.dataset_disk_manager import DatasetDiskManager
+from generic_dataset.sample_generator import SampleGenerator
+import generic_dataset.utilities.save_load_methods as slm
+import numpy as np
+
+GeneratedSampleClass = SampleGenerator(name='GeneratedSampleClass', label_set={0, 1}).add_field('field_1', field_type=int) \
+    .add_dataset_field(field_name='field_2', field_type=np.ndarray, save_function=slm.save_compressed_numpy_array, load_function=slm.load_compressed_numpy_array) \
+    .generate_sample_class()
+
+database = DatasetDiskManager(dataset_path='dataset_path', folder_name='folder_classification', load_metadata=True, sample_class=GeneratedSampleClassification)
+
+sample = GeneratedSampleClass(label=0).set_field_1(np.array([0 for _ in range(1000)]))
+
+# Save sample
+database.save_sample(sample, use_thread=False)
+
+# Load sample
+for (label, relative_count) in database.get_absolute_samples_information():
+    sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
+
+# Save the dataset metadata to disk
+database.save_metadata()
+```
+
 ### DataPipeline
 
 *DataPipeline* implements a mechanism to elaborate numpy arrays. As suggested by its name, this class creates an elaboration pipeline to modify a numpy array. A pipeline consists of a series of operations performed iteratively and it can be executed using both CPU and GPU. To do this, *DataPipeline* uses [CuPy](https://cupy.dev/) framework, which offers an interface highly compatible than NumPy, but all its functionalities are executed on GPU. This means you can write agnostic code: the pipeline can run in GPU or CPU without modifying the code, simply by replacing the engine (NumPy or CuPy). A pipeline operation consists of a function that accepts the data to modify and the used engine and returns both. This function can be simply added to a pipeline with a dedicated method. A pipeline is executed using the *run(use_gpu: bool)* method. If the method parameter is True, the pipeline is run on GPU and this method is asynchronous. This means that the pipeline is independently executed on the external device and the CPU can continue to run its operations. To synchronize them (CPU and GPU), use the method *get_data()*: it returns the pipeline result blocking the current thread until the elaboration is finished. In addition, it is possible to add a particular function called *end_function*. It is executed as the last step, when *get_data()* method is called. It allows the programmer to perform actions using the elaborated data. Its prototype is ```end_funtion(data: numpy.ndarray) -> np.ndarray```.

@@ -212,3 +212,18 @@ def test_total_sample_counts():
     dataset.save_sample(sample, False)
 
     assert dataset.get_total_sample_counts() == 7
+
+
+def test_save_metadata():
+    # Classification
+    dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', load_metadata=True, sample_class=GeneratedSampleClassification)
+    dataset_1 = DatasetDiskManager(dataset_path=path_classification, folder_name='folder_classification', load_metadata=False, sample_class=GeneratedSampleClassification)
+
+    assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
+        dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
+
+    dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', load_metadata=True, sample_class=GeneratedSampleClassification)
+    dataset_1 = DatasetDiskManager(dataset_path=path_regression, folder_name='folder_regression', load_metadata=False, sample_class=GeneratedSampleClassification)
+
+    assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
+           dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
