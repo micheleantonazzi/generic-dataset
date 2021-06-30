@@ -38,6 +38,12 @@ for (label, relative_count) in database.get_absolute_samples_information():
 sample = database.load_sample_using_absolute_count(absolute_count=2, use_thread=False)
 assert sample.get_label() == 2
 
+print('There are {0} samples with label 2'.format(database.get_sample_count_in_folder(label=2)))
+
+# Display dataset information
+print('The total amount of sample per labels are:')
+for label, count in database.get_total_sample_counts().items():
+    print(' - label {0} -> {1} samples'.format(label, count))
 
 
 ###############################
@@ -70,7 +76,8 @@ assert sample.get_label() == 0.2
 sample = database.load_sample_using_relative_count(label=3, relative_count=2, use_thread=False)
 assert sample.get_label() == 0.2
 
-print('There are {0} samples with label 3'.format(database.get_sample_count_in_folder(label=3)))
+print('There are {0} samples in the dataset'.format(database.get_sample_count_in_folder(label=1)))
+print('There are {0} samples in the dataset'.format(database.get_total_sample_counts()))
 
 
 

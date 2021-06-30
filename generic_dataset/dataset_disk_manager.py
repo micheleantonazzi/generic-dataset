@@ -9,6 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 from generic_dataset.generic_sample import GenericSample
 
 
+class LabelNotFoundException(Exception):
+    pass
+
+
 class DatasetDiskManager:
     """
     This class manages the persistence of the dataset.
@@ -65,14 +69,17 @@ class DatasetDiskManager:
         """
         with self._lock:
             if self._sample_class.GET_LABEL_SET():
-                return len(self._label_counts[label])
+                if label in self._sample_class.GET_LABEL_SET():
+                    return len(self._label_counts[label])
+                else:
+                    raise LabelNotFoundException('The label {0} does not exists, the label set is {1}'.format(label, self._sample_class.GET_LABEL_SET()))
             else:
                 return len(self._absolute_samples_information)
 
     def get_total_sample_counts(self) -> Union[int, Dict[int, int]]:
         """
         Returns the total sample counts for each label in the entire dataset.
-        If the dataset models a regression problem, the
+        If the dataset models a regression problem, the total example amount is returned
         :return: for a classification problem, returns a dict containing the sample counts (dict values) for each label (dict keys).
                  for a regression problem, returns the total number of sample
         :rtype: Union[Dict[int, int], int]

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.dataset_disk_manager import DatasetDiskManager
+from generic_dataset.dataset_disk_manager import DatasetDiskManager, LabelNotFoundException
 from generic_dataset.sample_generator import SampleGenerator
 import generic_dataset.utilities.save_load_methods as slm
 
@@ -46,6 +46,8 @@ def test_constructor():
 
 def test_count_samples():
     dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder', sample_class=GeneratedSampleClassification)
+    with pytest.raises(LabelNotFoundException):
+        dataset.get_sample_count_in_folder(label=5)
 
     assert dataset.get_sample_count_in_folder(0) == 0
     assert dataset.get_sample_count_in_folder(1) == 0
@@ -54,7 +56,7 @@ def test_count_samples():
 
     with pytest.raises(KeyError):
         dataset.get_samples_absolute_counts(2)
-    with pytest.raises(KeyError):
+    with pytest.raises(LabelNotFoundException):
         dataset.get_sample_count_in_folder(2)
 
     dataset = DatasetDiskManager(dataset_path=path_regression, folder_name='folder', sample_class=GeneratedSampleRegression)
@@ -191,6 +193,7 @@ def test_load_sample_regression():
 
         assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
         assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())
+
 
 def test_total_sample_counts():
     dataset = DatasetDiskManager(dataset_path=path_classification, folder_name='folder', sample_class=GeneratedSampleClassification)
