@@ -2,7 +2,10 @@
 This file contains a lot of method to save and load data from disk
 """
 import gzip
+import io
 import json
+import pickle
+import zlib
 from typing import NoReturn, Dict
 
 import cv2
@@ -32,13 +35,20 @@ def load_cv2_image_grayscale(path: str) -> np.ndarray:
 
 
 def save_compressed_dictionary(path: str, data: Dict) -> NoReturn:
-    with gzip.open(path + '.tar.gz', mode='w') as file:
-        file.write(json.dumps(data).encode('utf-8'))
+    bytes = io.BytesIO()
+    pickle.dump(data, bytes)
+
+    compressed = zlib.compress(bytes.getvalue())
+    with open(path + '.dat', mode='wb') as file:
+        file.write(compressed)
 
 
 def load_compressed_dictionary(path: str) -> Dict:
-    with gzip.open(path + '.tar.gz', mode='r') as file:
-        return json.loads(file.read().decode('utf-8'))
+    with open(path + '.dat', mode='rb') as file:
+        compressed = file.read()
+
+    bytes = zlib.decompress(compressed)
+    return pickle.loads(bytes)
 
 
 def save_compressed_numpy_array(path: str, data: np.ndarray) -> NoReturn:
