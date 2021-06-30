@@ -41,7 +41,7 @@ assert sample.get_label() == 0.2
 database.save_metadata()
 database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
-print('There are {0} samples in the dataset'.format(database.get_sample_count_in_folder(label=1)))
+print('There are {0} samples in the dataset'.format(database.get_sample_count(label=1)))
 
 
 

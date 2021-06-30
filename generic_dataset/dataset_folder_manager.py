@@ -79,7 +79,7 @@ class DatasetFolderManager:
         except FileNotFoundError:
             self._get_sample_counts()
 
-    def get_sample_count_in_folder(self, label: int) -> int:
+    def get_sample_count(self, label: int) -> int:
         """
             Returns the number of samples with the given label in the current folder.
             If a regression problem is modeled (so the label is a real number), this methods returns the total amount of the samples.

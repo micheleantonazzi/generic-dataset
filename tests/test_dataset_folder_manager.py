@@ -47,24 +47,24 @@ def test_constructor():
 def test_count_samples():
     dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder', sample_class=GeneratedSampleClassification)
     with pytest.raises(LabelNotFoundException):
-        dataset.get_sample_count_in_folder(label=5)
+        dataset.get_sample_count(label=5)
 
-    assert dataset.get_sample_count_in_folder(0) == 0
-    assert dataset.get_sample_count_in_folder(1) == 0
+    assert dataset.get_sample_count(0) == 0
+    assert dataset.get_sample_count(1) == 0
     assert len(dataset.get_samples_absolute_counts(0)) == 0
     assert len(dataset.get_samples_absolute_counts(1)) == 0
 
     with pytest.raises(KeyError):
         dataset.get_samples_absolute_counts(2)
     with pytest.raises(LabelNotFoundException):
-        dataset.get_sample_count_in_folder(2)
+        dataset.get_sample_count(2)
 
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder', sample_class=GeneratedSampleRegression)
 
-    assert dataset.get_sample_count_in_folder(label=0) == 0
-    assert dataset.get_sample_count_in_folder(label=1) == 0
+    assert dataset.get_sample_count(label=0) == 0
+    assert dataset.get_sample_count(label=1) == 0
     assert len(dataset.get_samples_absolute_counts(label=0)) == 0
-    dataset.get_sample_count_in_folder(2)
+    dataset.get_sample_count(2)
 
 
 def test_save_fields_classification():
@@ -88,8 +88,8 @@ def test_save_fields_classification():
     sample = GeneratedSampleClassification(label=0).set_field_1(np.array([4.1 for _ in range(10000)])).set_field_2(np.array([4.2 for _ in range(10000)]))
     dataset.save_sample(sample, True).result()
 
-    assert dataset.get_sample_count_in_folder(label=0) == 3
-    assert dataset.get_sample_count_in_folder(label=1) == 2
+    assert dataset.get_sample_count(label=0) == 3
+    assert dataset.get_sample_count(label=1) == 2
 
     assert dataset.get_samples_absolute_counts(label=0) == [0, 2, 4]
     assert dataset.get_samples_absolute_counts(label=1) == [1, 3]
@@ -117,9 +117,9 @@ def test_save_fields_regression():
     sample = GeneratedSampleRegression(label=.0).set_field_1(np.array([4.1 for _ in range(10000)])).set_field_2(np.array([4.2 for _ in range(10000)]))
     dataset.save_sample(sample, True).result()
 
-    assert dataset.get_sample_count_in_folder(label=0) == 5
-    assert dataset.get_sample_count_in_folder(label=1) == 5
-    dataset.get_sample_count_in_folder(label=2)
+    assert dataset.get_sample_count(label=0) == 5
+    assert dataset.get_sample_count(label=1) == 5
+    dataset.get_sample_count(label=2)
 
     assert dataset.get_samples_absolute_counts(label=0) == [0, 1, 2, 3, 4]
     assert dataset.get_samples_absolute_counts(label=1) == [0, 1, 2, 3, 4]
@@ -129,9 +129,9 @@ def test_save_fields_regression():
 def test_sample_information():
     dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
-    assert dataset.get_sample_count_in_folder(0) == 3
+    assert dataset.get_sample_count(0) == 3
     assert dataset.get_samples_absolute_counts(0) == [0, 2, 4]
-    assert dataset.get_sample_count_in_folder(1) == 2
+    assert dataset.get_sample_count(1) == 2
     assert dataset.get_samples_absolute_counts(1) == [1, 3]
     with pytest.raises(KeyError):
         dataset.get_samples_absolute_counts(2)
@@ -140,9 +140,9 @@ def test_sample_information():
 
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
-    assert dataset.get_sample_count_in_folder(0) == 5
+    assert dataset.get_sample_count(0) == 5
     assert dataset.get_samples_absolute_counts(0) == [0, 1, 2, 3, 4]
-    assert dataset.get_sample_count_in_folder(1) == 5
+    assert dataset.get_sample_count(1) == 5
     assert dataset.get_samples_absolute_counts(1) == [0, 1, 2, 3, 4]
     dataset.get_samples_absolute_counts(2)
 
@@ -201,12 +201,12 @@ def test_save_metadata():
     dataset.save_metadata()
     dataset_1 = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
-    assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
-        dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
+    assert dataset.get_sample_count(label=1) == dataset_1.get_sample_count(label=1) and \
+           dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
 
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
     dataset.save_metadata()
     dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
-    assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
+    assert dataset.get_sample_count(label=1) == dataset_1.get_sample_count(label=1) and \
            dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
