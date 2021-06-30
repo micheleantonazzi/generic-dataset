@@ -204,9 +204,9 @@ def test_save_metadata():
     assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
         dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
 
-    dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleClassification)
+    dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
     dataset.save_metadata()
-    dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleClassification)
+    dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
     assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
            dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
