@@ -193,7 +193,7 @@ sample = GeneratedSampleClass(label=0).set_field_1(np.array([0 for _ in range(10
 database.save_sample(sample, use_thread=False)
 
 # Load sample
-for (label, relative_count) in database.get_absolute_samples_information():
+for (label, relative_count) in database.get_samples_information():
     sample = database.load_sample_using_relative_count(label=label, relative_count=relative_count, use_thread=False)
 ```
 

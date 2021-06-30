@@ -125,7 +125,7 @@ class DatasetFolderManager:
             else:
                 return [count for label, count in self._absolute_samples_information]
 
-    def get_absolute_samples_information(self) -> List[Tuple[int, int]]:
+    def get_samples_information(self) -> List[Tuple[int, int]]:
         """
         Returns the information about all sample, sorted by their absolute count.
         The return value is a list of tuples (Tuple[int, int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:

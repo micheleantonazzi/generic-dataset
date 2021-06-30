@@ -93,7 +93,7 @@ def test_save_fields_classification():
 
     assert dataset.get_samples_absolute_counts(label=0) == [0, 2, 4]
     assert dataset.get_samples_absolute_counts(label=1) == [1, 3]
-    assert dataset.get_absolute_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
+    assert dataset.get_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
 
 
 def test_save_fields_regression():
@@ -123,7 +123,7 @@ def test_save_fields_regression():
 
     assert dataset.get_samples_absolute_counts(label=0) == [0, 1, 2, 3, 4]
     assert dataset.get_samples_absolute_counts(label=1) == [0, 1, 2, 3, 4]
-    assert dataset.get_absolute_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
+    assert dataset.get_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
 
 
 def test_sample_information():
@@ -136,7 +136,7 @@ def test_sample_information():
     with pytest.raises(KeyError):
         dataset.get_samples_absolute_counts(2)
 
-    assert dataset.get_absolute_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
+    assert dataset.get_samples_information() == [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)]
 
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
@@ -146,14 +146,14 @@ def test_sample_information():
     assert dataset.get_samples_absolute_counts(1) == [0, 1, 2, 3, 4]
     dataset.get_samples_absolute_counts(2)
 
-    assert dataset.get_absolute_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
+    assert dataset.get_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
 
 
 def test_load_sample_classification():
     dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
     thread = False
 
-    for i in range(len(dataset.get_absolute_samples_information())):
+    for i in range(len(dataset.get_samples_information())):
         thread = not thread
         sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=thread)
         if thread:
@@ -176,7 +176,7 @@ def test_load_sample_regression():
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
     thread = False
 
-    for i in range(len(dataset.get_absolute_samples_information())):
+    for i in range(len(dataset.get_samples_information())):
         thread = not thread
         sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=thread)
         if thread:
@@ -202,11 +202,11 @@ def test_save_metadata():
     dataset_1 = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
     assert dataset.get_sample_count(label=1) == dataset_1.get_sample_count(label=1) and \
-           dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
+           dataset.get_samples_information() == dataset_1.get_samples_information()
 
     dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
     dataset.save_metadata()
     dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleRegression)
 
     assert dataset.get_sample_count(label=1) == dataset_1.get_sample_count(label=1) and \
-           dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
+           dataset.get_samples_information() == dataset_1.get_samples_information()
