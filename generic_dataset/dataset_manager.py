@@ -1,5 +1,5 @@
 import os
-from typing import Type, Dict, List
+from typing import Type, Dict, List, NoReturn, Union
 
 from generic_dataset.dataset_folder_manager import DatasetFolderManager
 from generic_dataset.generic_sample import GenericSample
@@ -36,3 +36,31 @@ class DatasetManager:
         :rtype: List[str]
         """
         return list(self._dataset_folder_managers.keys())
+
+    def save_metadata(self) -> NoReturn:
+        """
+        This method saves to disk the metadata of all folders in the dataset
+        :return: NoReturn
+        """
+        for folder_manager in self._dataset_folder_managers.values():
+            folder_manager.save_metadata()
+
+    def get_sample_count(self) -> Union[int, Dict[int, int]]:
+        """
+        This method returns:
+            - classificiation problem: a dictionary containing the labels as keys and the relative quantity of samples for each label as values
+            - regression problem: and integer value which indicates the total amount of sample in the entire dataset
+        :return:
+        """
+        if self._sample_class.GET_LABEL_SET():
+            labels = self._sample_class.GET_LABEL_SET()
+            ret = {label: 0 for label in labels}
+            for folder_manager in self._dataset_folder_managers.values():
+                for label in labels:
+                    ret[label] += folder_manager.get_sample_count(label=label)
+        else:
+            ret = 0
+            for folder_manager in self._dataset_folder_managers.values():
+                ret += folder_manager.get_sample_count(label=0)
+
+        return ret

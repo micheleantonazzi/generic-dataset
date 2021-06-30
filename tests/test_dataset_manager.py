@@ -80,5 +80,20 @@ def test_get_folders():
     assert dataset.get_folder_names().sort() == ['folder_regression_1', 'folder_regression_2'].sort()
 
 
-def test_total_sample_counts():
-    pass
+def test_save_metadata():
+    dataset_classification = DatasetManager(dataset_path=path_classification, sample_class=GeneratedSampleClassification, max_treads=8)
+    dataset_regression = DatasetManager(dataset_path=path_regression, sample_class=GeneratedSampleRegression, max_treads=8)
+
+    dataset_regression.save_metadata()
+    dataset_classification.save_metadata()
+
+    assert os.path.exists(os.path.join(path_classification, 'folder_classification_1', 'metadata.dat')) and os.path.exists(os.path.join(path_classification, 'folder_classification_2', 'metadata.dat'))
+    assert os.path.exists(os.path.join(path_regression, 'folder_regression_1', 'metadata.dat')) and os.path.exists(os.path.join(path_regression, 'folder_regression_2', 'metadata.dat'))
+
+
+def test_sample_count():
+    dataset_classification = DatasetManager(dataset_path=path_classification, sample_class=GeneratedSampleClassification, max_treads=8)
+    dataset_regression = DatasetManager(dataset_path=path_regression, sample_class=GeneratedSampleRegression, max_treads=8)
+
+    assert dataset_classification.get_sample_count() == {0: 3, 1: 2}
+    assert dataset_regression.get_sample_count() == 5
