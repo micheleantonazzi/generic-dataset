@@ -35,10 +35,11 @@ class DatasetFolderManager:
     Remember that for a regression task, all samples are saved in the same directory, so the relative and the absolute count of a sample are equal.
     """
 
-    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], load_metadata: bool = False, max_treads: int = 4):
+    def __init__(self, dataset_path: str, folder_name: str, sample_class: Type[GenericSample], max_treads: int = 4):
         """
         Instantiates a new instance of DatasetFolderManager.
         This constructor automatically creates the directory tree in which the samples are saved and loaded.
+        The folder's metadata are automatically loaded from file if it exists, otherwise they are calculated.
         :raise FileNotFoundError if the dataset path does not exist.
         :param dataset_path: the absolute path where to create the dataset root folder. This path incorporates the dataset root folder name: path/to/dataset/dataset_root_folder_name
         :type dataset_path: str
@@ -46,8 +47,6 @@ class DatasetFolderManager:
         :type folder_name: str
         :param sample_class: the sample class to save and load from disk
         :type sample_class: type
-        :param load_metadata: if it is true, the folder metadata are loaded from disk (if the relative file exists), otherwise the folder metadata are calculated examining the files
-        :type load_metadata: bool
         :param max_treads: the max number of worker used by thread pool
         """
         self._dataset_path = dataset_path
@@ -72,15 +71,12 @@ class DatasetFolderManager:
         #   - tuple[1] = sample absolute count
         self._absolute_samples_information: List[Tuple[int, int]] = []
 
-        if load_metadata:
-            try:
-                metadata = slm.load_compressed_dictionary(os.path.join(self._dataset_path, self._folder_name, 'metadata'))
-                if self._sample_class.GET_LABEL_SET():
-                    self._label_counts = metadata['label_counts']
-                self._absolute_samples_information = metadata['absolute_samples_information']
-            except FileNotFoundError:
-                self._get_sample_counts()
-        else:
+        try:
+            metadata = slm.load_compressed_dictionary(os.path.join(self._dataset_path, self._folder_name, 'metadata'))
+            if self._sample_class.GET_LABEL_SET():
+                 self._label_counts = metadata['label_counts']
+            self._absolute_samples_information = metadata['absolute_samples_information']
+        except FileNotFoundError:
             self._get_sample_counts()
 
     def get_sample_count_in_folder(self, label: int) -> int:

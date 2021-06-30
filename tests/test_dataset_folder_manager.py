@@ -197,14 +197,16 @@ def test_load_sample_regression():
 
 def test_save_metadata():
     # Classification
-    dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', load_metadata=True, sample_class=GeneratedSampleClassification)
-    dataset_1 = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', load_metadata=False, sample_class=GeneratedSampleClassification)
+    dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    dataset.save_metadata()
+    dataset_1 = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
 
     assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
         dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
 
-    dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', load_metadata=True, sample_class=GeneratedSampleClassification)
-    dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', load_metadata=False, sample_class=GeneratedSampleClassification)
+    dataset = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleClassification)
+    dataset.save_metadata()
+    dataset_1 = DatasetFolderManager(dataset_path=path_regression, folder_name='folder_regression', sample_class=GeneratedSampleClassification)
 
     assert dataset.get_sample_count_in_folder(label=1) == dataset_1.get_sample_count_in_folder(label=1) and \
            dataset.get_absolute_samples_information() == dataset_1.get_absolute_samples_information()
