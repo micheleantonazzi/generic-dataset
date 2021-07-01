@@ -38,9 +38,10 @@ This library can accelerate the operations performed over numpy array using *Nvi
 To enable the GPU support, please install and configure CUDA Toolkit before installing this package: this will automatically install CuPy during the installation of *generic-dataset*. Otherwise, you can configure the CUDA environment at a later time and then install CuPy using its [installation guide](https://docs.cupy.dev/en/stable/install.html#installing-cupy).
 
 ## Library structure
-This library is composed by three main entities: 
+This library is composed by four main entities: 
 
 * **SampleGenerator:** it is a configurable class that generates **sample classes** according to the programmers' needs. This means that the *sample class* is not apriori defined, but it is composed by *SampleGenerator* using the *metaprogramming paradigm*. The generated *sample classes* can model a *classification* or a *regression problem*, so the sample label could be an integer, which belongs to a discrete set, or a real number.  In addition to the label, a sample is characterized by fields (containing the sample data) and the operations to manipulate them.
+* **DatasetManager:** this class is a utility to use and retrieve the data from a dataset. The dataset is divided into many folders, which may contain samples acquired in different situations or conditions. Each sub-directory is represented and managed by a *DatasetFolderManager* instance. Using *DatasetManager*, the user can manage the entire dataset.
 * **DatasetFolderManager:** this class is responsible for managing a dataset folder. It can work with any type of generated sample class.
 * **DataPipeline:** this entity defines an elaboration pipeline to manipulate numpy arrays. A pipeline can be executed in CPU or GPU.
 
