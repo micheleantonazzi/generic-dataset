@@ -20,7 +20,7 @@ generated_sample_1.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_d
 generated_sample_2.create_pipeline_convert_rgb_to_bgr().run(use_gpu=False).get_data()
 
 
-database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=False, max_treads=8)
+database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, max_treads=8)
 
 # Save samples
 database.save_sample(generated_sample_0, use_thread=False)
@@ -43,4 +43,4 @@ print('There are {0} samples with label 2'.format(database.get_sample_count(labe
 database.save_metadata()
 
 # The metadata are loaded from file
-loaded_database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, load_metadata=True, max_treads=8)
+loaded_database = DatasetFolderManager(dataset_path=dataset_path, folder_name='folder_classification', sample_class=GeneratedSampleClassification, max_treads=8)
