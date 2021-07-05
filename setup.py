@@ -81,6 +81,7 @@ setup(
     install_requires=[
         'opencv-python',
         'numpy',
+        'pandas',
         cuda_version,
         'termcolor',
         'stub-generator'
