@@ -69,12 +69,11 @@ class DatasetManager:
     def get_dataframe(self) -> pd.DataFrame:
         """
         This method returns a pandas dataframe containing all samples and its information (folder_name, folder_absolute_count and label).
-        The samples are ordered according to their folder name and their abosolute count inside it.
-        :return:
+        :return: a pandas dataframe contaning all samples information.
         """
 
         dataframe = pd.DataFrame(columns=['folder_name', 'folder_absolute_count', 'label'])
-        for folder in sorted(list(self._dataset_folder_managers.keys()), key=lambda folder: folder):
+        for folder in self._dataset_folder_managers.keys():
             samples_information = self._dataset_folder_managers[folder].get_samples_information()
             values = [[folder, i, label] for (i, (label, _)) in enumerate(samples_information)]
             dataframe = dataframe.append(pd.DataFrame(values, columns=dataframe.columns), ignore_index=True)
