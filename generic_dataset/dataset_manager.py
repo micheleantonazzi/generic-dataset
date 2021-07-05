@@ -76,8 +76,6 @@ class DatasetManager:
         dataframe = pd.DataFrame(columns=['folder_name', 'folder_absolute_count', 'label'])
         for folder in sorted(list(self._dataset_folder_managers.keys()), key=lambda folder: folder):
             samples_information = self._dataset_folder_managers[folder].get_samples_information()
-            print(samples_information)
             values = [[folder, i, label] for (i, (label, _)) in enumerate(samples_information)]
             dataframe = dataframe.append(pd.DataFrame(values, columns=dataframe.columns), ignore_index=True)
-        print(dataframe)
         return dataframe
