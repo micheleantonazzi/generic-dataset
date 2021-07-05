@@ -123,7 +123,7 @@ def test_save_fields_regression():
 
     assert dataset.get_samples_absolute_counts(label=0) == [0, 1, 2, 3, 4]
     assert dataset.get_samples_absolute_counts(label=1) == [0, 1, 2, 3, 4]
-    assert dataset.get_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
+    assert dataset.get_samples_information() == [(0.0, 0), (1.0, 1), (0.0, 2), (1.0, 3), (0.0, 4)]
 
 
 def test_sample_information():
@@ -146,7 +146,7 @@ def test_sample_information():
     assert dataset.get_samples_absolute_counts(1) == [0, 1, 2, 3, 4]
     dataset.get_samples_absolute_counts(2)
 
-    assert dataset.get_samples_information() == [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
+    assert dataset.get_samples_information() == [(0.0, 0), (1.0, 1), (0.0, 2), (1.0, 3), (0.0, 4)]
 
 
 def test_load_sample_classification():

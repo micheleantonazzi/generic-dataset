@@ -97,3 +97,13 @@ def test_sample_count():
 
     assert dataset_classification.get_sample_count() == {0: 6, 1: 4}
     assert dataset_regression.get_sample_count() == 10
+
+
+def test_dataframe():
+    dataset_classification = DatasetManager(dataset_path=path_classification, sample_class=GeneratedSampleClassification, max_treads=8)
+    dataframe = dataset_classification.get_dataframe()
+
+    assert 10 == len(dataframe.index)
+
+    dataset_regression = DatasetManager(dataset_path=path_regression, sample_class=GeneratedSampleRegression, max_treads=8)
+    dataframe = dataset_regression.get_dataframe()

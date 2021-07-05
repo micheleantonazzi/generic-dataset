@@ -1,6 +1,7 @@
 import os
 from typing import Type, Dict, List, NoReturn, Union
 
+import pandas as pd
 from generic_dataset.dataset_folder_manager import DatasetFolderManager
 from generic_dataset.generic_sample import GenericSample
 
@@ -64,3 +65,19 @@ class DatasetManager:
                 ret += folder_manager.get_sample_count(label=0)
 
         return ret
+
+    def get_dataframe(self) -> pd.DataFrame:
+        """
+        This method returns a pandas dataframe containing all samples and its information (folder_name, folder_absolute_count and label).
+        The samples are ordered according to their folder name and their abosolute count inside it.
+        :return:
+        """
+
+        dataframe = pd.DataFrame(columns=['folder_name', 'folder_absolute_count', 'label'])
+        for folder in sorted(list(self._dataset_folder_managers.keys()), key=lambda folder: folder):
+            samples_information = self._dataset_folder_managers[folder].get_samples_information()
+            print(samples_information)
+            values = [[folder, i, label] for (i, (label, _)) in enumerate(samples_information)]
+            dataframe = dataframe.append(pd.DataFrame(values, columns=dataframe.columns), ignore_index=True)
+        print(dataframe)
+        return dataframe

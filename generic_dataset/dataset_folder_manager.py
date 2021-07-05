@@ -64,12 +64,9 @@ class DatasetFolderManager:
         self._label_counts: Dict[int, List[int]] = {}
 
         # list[i] = tuple[int, int], which are the information about the sample with i as absolute count, where
-        #   - tuple[0] = contains the sample label
+        #   - tuple[0] = contains the sample label (integer for classification and float for regression)
         #   - tuple[1] = sample count relatives to its category (label)
-        # For a regression problem this list contains tuples where:
-        #   - tuple[0] = 0 (label)
-        #   - tuple[1] = sample absolute count
-        self._absolute_samples_information: List[Tuple[int, int]] = []
+        self._absolute_samples_information: List[Tuple[Union[int, float], int]] = []
 
         try:
             metadata = slm.load_compressed_dictionary(os.path.join(self._dataset_path, self._folder_name, 'metadata'))
@@ -125,17 +122,14 @@ class DatasetFolderManager:
             else:
                 return [count for label, count in self._absolute_samples_information]
 
-    def get_samples_information(self) -> List[Tuple[int, int]]:
+    def get_samples_information(self) -> List[Tuple[Union[int, float], int]]:
         """
         Returns the information about all sample, sorted by their absolute count.
-        The return value is a list of tuples (Tuple[int, int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:
+        The return value is a list of tuples (Tuple[Union[int, float], int]), where list[i] is a tuple with the information about the i-th sample. Each tuple contains:
             - tuple[0]: int = the sample's label
             - tuple[1]: the sample count inside its category (depending on its label)
-        If a regression task is modelled (so the label is a real number), this methods returns a list of tuple, where list[i] =
-            - tuple[0] = 0 (fake label)
-            - tuple[1] = i
         :return: a list containing all samples information
-        :rtype: List[Tuple[int, int]]
+        :rtype: List[Tuple[Union[int, float], int]]
         """
         with self._lock:
             return self._absolute_samples_information.copy()
@@ -164,7 +158,7 @@ class DatasetFolderManager:
                 self._absolute_samples_information.append((label, count))
             else:
                 count = absolute_count = len(self._absolute_samples_information)
-                self._absolute_samples_information.append((0, count))
+                self._absolute_samples_information.append((sample.get_label(), count))
 
         function = self._save_or_load_sample(
             sample=sample,
@@ -280,8 +274,10 @@ class DatasetFolderManager:
         else:
             path = os.path.join(self._dataset_path, self._folder_name, str(field))
             file_names = [name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))]
-            self._absolute_samples_information = [(0, int(re.match(file_name_regexp, file_name).group(3))) for file_name in file_names]
+            self._absolute_samples_information = [(0.0, int(re.match(file_name_regexp, file_name).group(3))) for file_name in file_names]
             self._absolute_samples_information.sort(key=lambda item: item[1])
+            for label, count in self._absolute_samples_information:
+                self._absolute_samples_information[count] = (self.load_sample_using_absolute_count(count, use_thread=False).get_label(), count)
 
     def _set_up_folders(self):
         if not os.path.exists(os.path.dirname(self._dataset_path)):
