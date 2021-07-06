@@ -107,3 +107,11 @@ def test_dataframe():
 
     dataset_regression = DatasetManager(dataset_path=path_regression, sample_class=GeneratedSampleRegression, max_treads=8)
     dataframe = dataset_regression.get_dataframe()
+
+
+def test_load_sample():
+    dataset_classification = DatasetManager(dataset_path=path_classification, sample_class=GeneratedSampleClassification, max_treads=8)
+    loaded_sample: GeneratedSampleClassification = dataset_classification.load_sample(folder_name='folder_classification_1', absolute_count=1)
+    sample = GeneratedSampleClassification(label=1).set_field_1(np.array([1.1 for _ in range(10000)])).set_field_2(np.array([1.2 for _ in range(10000)]))
+
+    assert sample.get_label() == loaded_sample.get_label() and np.array_equal(sample.get_field_1(), loaded_sample.get_field_1()) and np.array_equal(sample.get_field_2(), loaded_sample.get_field_2())

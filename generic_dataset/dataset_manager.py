@@ -1,6 +1,6 @@
 import os
 from typing import Type, Dict, List, NoReturn, Union
-
+from concurrent.futures._base import Future
 import pandas as pd
 from generic_dataset.dataset_folder_manager import DatasetFolderManager
 from generic_dataset.generic_sample import GenericSample
@@ -78,3 +78,15 @@ class DatasetManager:
             values = [[folder, i, label] for (i, (label, _)) in enumerate(samples_information)]
             dataframe = dataframe.append(pd.DataFrame(values, columns=dataframe.columns), ignore_index=True)
         return dataframe
+
+    def load_sample(self, folder_name: str, absolute_count: int, use_thread: bool = False) -> Union[GenericSample, Future]:
+        """
+        Loads sample using the folder name where it is stored and it absoulte count inside it.
+        :param folder_name: the name of the directory where it is stored
+        :param absolute_count: the absolute count of the sample
+        :param use_thread: if True, the sample is loaded using a thread.
+                        In this case, a Future is returned and the loaded sample can be obtained using result() method.
+        :return: Union[GenericSample, Future]. GenericSample is returned if use_thread is false, otherwise this method returns a Future instance
+        """
+
+        return self._dataset_folder_managers[folder_name].load_sample_using_absolute_count(absolute_count=absolute_count, use_thread=use_thread)
