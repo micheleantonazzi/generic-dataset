@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from generic_dataset.data_pipeline import DataPipeline
-from generic_dataset.dataset_folder_manager import DatasetFolderManager, LabelNotFoundException
+from generic_dataset.dataset_folder_manager import DatasetFolderManager, LabelNotFoundException, WrongLabelException
 from generic_dataset.sample_generator import SampleGenerator
 import generic_dataset.utilities.save_load_methods as slm
 
@@ -210,3 +210,32 @@ def test_save_metadata():
 
     assert dataset.get_sample_count(label=1) == dataset_1.get_sample_count(label=1) and \
            dataset.get_samples_information() == dataset_1.get_samples_information()
+
+
+def test_replace_sample():
+    dataset = DatasetFolderManager(dataset_path=path_classification, folder_name='folder_classification', sample_class=GeneratedSampleClassification)
+    sample = GeneratedSampleClassification(label=1).set_field_1(np.array([1 for _ in range(10000)])).set_field_2(np.array([1 for _ in range(10000)]))
+
+    with pytest.raises(IndexError):
+        dataset.replace_sample(sample=sample, absolute_count=100, use_thread=False)
+
+    with pytest.raises(WrongLabelException):
+        dataset.replace_sample(sample=sample, absolute_count=2, use_thread=False)
+
+    dataset.replace_sample(sample=sample, absolute_count=1, use_thread=False)
+    sample.set_label(0)
+    dataset.replace_sample(sample=sample, absolute_count=2, use_thread=False)
+
+    thread = True
+    for i in range(len(dataset.get_samples_information())):
+        thread = not thread
+        sample = dataset.load_sample_using_absolute_count(absolute_count=i, use_thread=thread)
+        if thread:
+            sample: GeneratedSampleClassification = sample.result()
+
+        if i == 1 or i == 2:
+            assert np.array_equal(np.array([1 for _ in range(10000)]), sample.get_field_1())
+            assert np.array_equal(np.array([1 for _ in range(10000)]), sample.get_field_2())
+        else:
+            assert np.array_equal(np.array([float(str(i) + '.1') for _ in range(10000)]), sample.get_field_1())
+            assert np.array_equal(np.array([float(str(i) + '.2') for _ in range(10000)]), sample.get_field_2())

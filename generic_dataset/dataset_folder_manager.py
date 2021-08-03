@@ -12,6 +12,9 @@ import generic_dataset.utilities.save_load_methods as slm
 class LabelNotFoundException(Exception):
     pass
 
+class WrongLabelException(Exception):
+    pass
+
 
 class DatasetFolderManager:
     """
@@ -134,13 +137,48 @@ class DatasetFolderManager:
         with self._lock:
             return self._absolute_samples_information.copy()
 
+    def replace_sample(self, sample: GenericSample, absolute_count: int, use_thread: bool) -> Union[GenericSample, Future]:
+        """
+        Replaces a saved sample with the one passed as parameter.
+        :param sample: the sample to save
+        :param absolute_count: the absolute count of the sample to overwrite
+        :param use_thread: if use_thread is True, returns the future in which the fields is saved (the future returns the saved sample)
+                returns the saved samples otherwise
+        :return:
+        """
+        if not isinstance(sample, self._sample_class):
+            raise TypeError('The sample type is wrong!')
+
+        with self._lock:
+            if absolute_count >= len(self._absolute_samples_information):
+                raise IndexError('The sample to replace does not exists! Please check the absolute_count parameter!')
+
+            if self._sample_class.GET_LABEL_SET():
+                count = self._absolute_samples_information[absolute_count][1]
+
+                if sample.get_label() != self._absolute_samples_information[absolute_count][0]:
+                    raise WrongLabelException('The labels of the new sample and the one to replace are different! You cannot change the sample label!')
+            else:
+                count = absolute_count
+
+        function = self._save_load_sample(
+            sample=sample,
+            action='save',
+            absolute_count=absolute_count,
+            relative_count=count)
+
+        if use_thread:
+            return self._pool.submit(function)
+        else:
+            return function()
+
     def save_sample(self, sample: GenericSample, use_thread: bool) -> Union[GenericSample, Future]:
         """
         Saves to disk the given sample.
         :raise TypeError if the sample has a wrong type
         :param sample: the sample to save
         :param use_thread: if True, this method saves files in a separate thread
-        :return: it use_thread is True, returns the future in which the fields is saved (the future returns the saved sample)
+        :return: if use_thread is True, returns the future in which the fields is saved (the future returns the saved sample)
                 returns the saved samples otherwise
         :rtype: Union[GenericSample, Future]
         """
@@ -160,16 +198,16 @@ class DatasetFolderManager:
                 count = absolute_count = len(self._absolute_samples_information)
                 self._absolute_samples_information.append((sample.get_label(), count))
 
-        function = self._save_or_load_sample(
+        function = self._save_load_sample(
             sample=sample,
-            save_or_load='save',
+            action='save',
             absolute_count=absolute_count,
             relative_count=count)
 
         if use_thread:
             return self._pool.submit(function)
         else:
-            function()
+            return function()
 
     def load_sample_using_absolute_count(self, absolute_count: int, use_thread: bool) -> Union[GenericSample, Future]:
         """
@@ -189,9 +227,9 @@ class DatasetFolderManager:
             else:
                 sample_label = 0.0
 
-        function = self._save_or_load_sample(
+        function = self._save_load_sample(
             sample=self._sample_class(label=sample_label),
-            save_or_load='load',
+            action='load',
             absolute_count=absolute_count,
             relative_count=sample_information[1])
 
@@ -217,9 +255,9 @@ class DatasetFolderManager:
                 absolute_count = relative_count
                 sample_label = 0.0
 
-        function = self._save_or_load_sample(
+        function = self._save_load_sample(
             sample=self._sample_class(label=sample_label),
-            save_or_load='load',
+            action='load',
             absolute_count=absolute_count,
             relative_count=relative_count)
 
@@ -228,7 +266,7 @@ class DatasetFolderManager:
         else:
             return function()
 
-    def _save_or_load_sample(self, sample: GenericSample, save_or_load: str, absolute_count, relative_count):
+    def _save_load_sample(self, sample: GenericSample, action: str, absolute_count, relative_count):
 
         def f():
             with sample as sample_locked:
@@ -242,9 +280,9 @@ class DatasetFolderManager:
                     file_name += str(absolute_count)
                     file_name += ')'
 
-                    if save_or_load == 'save':
+                    if action == 'save':
                         sample_locked.save_field(field_name=field, path=os.path.join(path, field), file_name=file_name)
-                    elif save_or_load == 'load':
+                    elif action == 'load':
                         sample_locked.load_field(field_name=field, path=os.path.join(path, field), file_name=file_name)
 
             return sample
