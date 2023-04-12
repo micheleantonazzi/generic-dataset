@@ -85,7 +85,8 @@ setup(
     tests_require=test_deps,
     # Add here the package dependencies
     install_requires=[
-        'opencv-python',
+        'opencv-python<4.7; python_version == "3.6"',
+        'opencv-python; python_version > "3.6"',
         'numpy',
         'pandas',
         cuda_version,
