@@ -76,7 +76,7 @@ class DatasetManager:
         for folder in self._dataset_folder_managers.keys():
             samples_information = self._dataset_folder_managers[folder].get_samples_information()
             values = [[folder, i, label] for (i, (label, _)) in enumerate(samples_information)]
-            dataframe = dataframe.append(pd.DataFrame(values, columns=dataframe.columns), ignore_index=True)
+            dataframe = pd.concat([dataframe, pd.DataFrame(values, columns=dataframe.columns)], ignore_index=True)
         return dataframe.sort_values(['folder_name', 'folder_absolute_count'])
 
     def load_sample(self, folder_name: str, absolute_count: int, use_thread: bool = False) -> Union[GenericSample, Future]:
