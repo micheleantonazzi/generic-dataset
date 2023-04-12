@@ -1,6 +1,8 @@
 import os
 import re
 import subprocess
+import sys
+import platform
 
 # To use a consistent encoding
 from codecs import open as copen
@@ -51,12 +53,16 @@ def get_cuda_version():
 
     return ''
 
-try:
-    cuda_version = get_cuda_version()
-    if not cuda_version == '':
-        cuda_version = 'cupy-cuda' + cuda_version
-except:
+# On python 3.6 and aarch64, install cupy (requires a long build)
+if sys.version_info[0] == 3 and sys.version_info[1] == 6 and platform.machine() == 'aarch64':
     cuda_version = ''
+else:
+    try:
+        cuda_version = get_cuda_version()
+        if not cuda_version == '':
+            cuda_version = 'cupy-cuda' + cuda_version
+    except:
+        cuda_version = ''
 
 setup(
     name='generic-dataset',
