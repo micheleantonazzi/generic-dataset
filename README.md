@@ -1,6 +1,7 @@
 # Generic dataset manager
 ![](https://github.com/micheleantonazzi/generic-dataset/workflows/Build/badge.svg?branch=main)
 [![pypi](https://img.shields.io/pypi/v/generic-dataset.svg)](https://pypi.org/project/generic-dataset/)
+![PyPI Downloads](https://static.pepy.tech/badge/generic-dataset)
 [![](https://sonarcloud.io/api/project_badges/measure?project=micheleantonazzi_generic-dataset&metric=coverage)](https://sonarcloud.io/dashboard/index/micheleantonazzi_generic-dataset)
 
 
